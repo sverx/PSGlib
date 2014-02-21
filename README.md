@@ -13,7 +13,9 @@ Typical workflow:
 
 4) 'incbin' the file to your Z80 ASM source
 
-5) Set up a steady interrupt (vBlank for instance) to call PSGFrame at a constant pace
+5) call PSGInit once somewhere near the beginning of your code
 
-6) Start/stop tunes when needed using PSGPlay and PSGStop calls, start/cancel SFXs when needed using PSGSFXPlay and PSGSFXStop calls. Looping SFXs are supported too, fire them using a PSGSFXPlayLoop call.
+6) Set up a steady interrupt (vertical blanking for instance) so to call PSGFrame at a constant pace (very important!)
+
+7) Start/stop tunes when needed using PSGPlay and PSGStop calls, start/cancel SFXs when needed using PSGSFXPlay and PSGSFXStop calls. Looping SFXs are supported too, fire them using a PSGSFXPlayLoop call.
 
