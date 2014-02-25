@@ -43,8 +43,6 @@ banks 1
 
 .bank 0 slot 0
 
-.include "PSGPlay.inc"
-
 .org 0                          ; this goes at ROM address 0 (boot) : standard startup
 .section "Startup" force
 di                              ; disable interrupt
@@ -66,7 +64,7 @@ jp main                         ; run main()
 
 .section "waitForVBlank" free
 waitForVBlank:
-  -:ld a,(VBlankFlag)
+-:ld a,(VBlankFlag)
   or a
   jr z,-
   xor a
@@ -111,6 +109,8 @@ _Data:
 _End:
 .ends
 
+.include "PSGPlay.inc"          ; include the library
+
 .section "main" free
 main:
 
@@ -122,7 +122,7 @@ main:
   ; ******************** start the tune ********************
   ld hl,theMusic
   call PSGPlay
-  
+
   ld d,$00
   ld a,192
   ld (MaxVCount),a              ; init vcount at 192

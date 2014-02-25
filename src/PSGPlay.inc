@@ -1,29 +1,29 @@
 ;==============================================================
-; PSGPlay library
+; PSGplay library
 ;==============================================================
 
 .define      PSG_STOPPED         0
 .define      PSG_PLAYING         1
 
-.define      PSGDataPort     $7f
+.define      PSGDataPort         $7f
 
-.define      PSGLatch        $80
-.define      PSGData         $40
+.define      PSGLatch            $80
+.define      PSGData             $40
 
-.define      PSGChannel0        %00000000
-.define      PSGChannel1        %00100000
-.define      PSGChannel2        %01000000
-.define      PSGChannel3        %01100000
-.define      PSGVolumeData      %00010000
+.define      PSGChannel0         %00000000
+.define      PSGChannel1         %00100000
+.define      PSGChannel2         %01000000
+.define      PSGChannel3         %01100000
+.define      PSGVolumeData       %00010000
 
-.define      PSGWait         $38
-.define      PSGSubString    $08
-.define      PSGLoop         $01
-.define      PSGEnd          $00
+.define      PSGWait             $38
+.define      PSGSubString        $08
+.define      PSGLoop             $01
+.define      PSGEnd              $00
 
-.define      SFX_CHANNEL2       $01
-.define      SFX_CHANNEL3       $02
-.define      SFX_CHANNELS2AND3  SFX_CHANNEL2|SFX_CHANNEL3
+.define      SFX_CHANNEL2        $01
+.define      SFX_CHANNEL3        $02
+.define      SFX_CHANNELS2AND3   SFX_CHANNEL2|SFX_CHANNEL3
 
 
 .section "PSGInit" free
@@ -50,7 +50,6 @@ PSGPlay:
   xor a
   ld (PSGMusicSkipFrames),a       ; reset the skip frames
   ld (PSGMusicSubstringLen),a     ; reset the substring len (for compression)
-  ld (PSGMusicLastLatch),a        ; reset last latch
   ld a,PSG_PLAYING
   ld (PSGMusicStatus),a           ; set status to PSG_PLAYING
   ret
@@ -70,12 +69,12 @@ PSGStop:
   out (PSGDataPort),a
   ld a,(PSGChannel2SFX)
   or a
-  jr z,+
+  jr nz,+
   ld a,PSGLatch|PSGChannel2|PSGVolumeData|$0F   ; latch channel 2, volume=0xF (silent)
   out (PSGDataPort),a
 +:ld a,(PSGChannel3SFX)
   or a
-  jr z,+
+  jr nz,+
   ld a,PSGLatch|PSGChannel3|PSGVolumeData|$0F   ; latch channel 3, volume=0xF (silent)
   out (PSGDataPort),a
 +:xor a                                         ; ld a,PSG_STOPPED
@@ -98,7 +97,7 @@ PSGSFXPlay:
   ld (PSGSFXLoopFlag),a         ; SFX is _NOT_ a looping one
 +:ld (PSGSFXStart),hl           ; store begin of SFX
   ld (PSGSFXPointer),hl         ; set the pointer to begin of SFX
-  ld (PSGSFXLoopPoint),hl       ; looppointer points to begin too (BETA: still unused)
+  ld (PSGSFXLoopPoint),hl       ; looppointer points to begin too
   xor a
   ld (PSGSFXSkipFrames),a       ; reset the skip frames
   ld (PSGSFXSubstringLen),a     ; reset the substring len
@@ -110,15 +109,6 @@ PSGSFXPlay:
   jr z,+
   ld a,PSGLatch|PSGChannel3|PSGVolumeData|$0F   ; latch channel 3, volume=0xF (silent)
   out (PSGDataPort),a
-  ld (PSGSFXLastLatch),a
-+:ld a,(PSGMusicStatus)          ; check if a tune is playing
-  or a
-  jr z,+                         ; if it's not playing, skip restoring PSG values
-  ld a,(PSGMusicLastLatch)       ; we must ensure the PSG is set again on its last latch
-  bit 6,a                        ; (if NOT channel 2 or 3)
-  jr nz,+
-  out (PSGDataPort),a
-  ld (PSGSFXLastLatch),a
 +:ld a,PSG_PLAYING
   bit 0,c                       ; channel 2 used?
   jr z,+
@@ -164,8 +154,6 @@ PSGSFXStop:
   ld a,(PSGChan23Volume+1)       ; restore music' channel 3 volume
   or PSGLatch|PSGChannel3|PSGVolumeData
   out (PSGDataPort),a
-  ld a,(PSGMusicLastLatch)
-  out (PSGDataPort),a            ; we must ensure the PSG is set again on the last latch
 +:xor a                          ; ld a,PSG_STOPPED
   ld (PSGChannel2SFX),a
   ld (PSGChannel3SFX),a
@@ -186,7 +174,7 @@ PSGFrame:
   or a
   jp nz,_skipFrame
 
-  ld a,(PSGMusicRestoreLatch)    ; in case that a playing SFX changed the current channel
+  ld a,(PSGMusicLastLatch)       ; in case that a playing SFX changed the current channel
   out (PSGDataPort),a
 
 _intLoop:
@@ -201,21 +189,17 @@ _intLoop:
   dec a                             ; decrease len
   ld (PSGMusicSubstringLen),a       ; save len
   jp nz,_continue
-  ld hl,(PSGMusicSubstringRetAddr)  ; substring over, retrieve return address
+  ld hl,(PSGMusicSubstringRetAddr)  ; substring is over, retrieve return address
   ld (PSGMusicPointer),hl
 
 _continue:
   ld a,b                         ; restore byte
   cp PSGData
   jp c,_command                  ; if less than $40 then it's a command
-  
   cp PSGLatch
   jp c,_data                     ; if less than $80 then it's not a latch
-
-  ld (PSGMusicLastLatch),a       ; store the music latch as is
-  bit 6,b                        ; test if it's for channels 0-1 or for 2-3
+  bit 6,b                        ; test if the latch it's for channels 0-1 or for 2-3
   jp z,_send2PSG                 ; if it's for chn 0 or 1 then ok
-
   and $0F                        ; separate low 4 bits of byte
   bit 4,b                        ; test if it's a volume
   jp z,_freq                     ; jump if tone data
@@ -266,7 +250,7 @@ _command:
 _send2PSG_B:
   ld a,b
 _send2PSG:
-  ld hl,PSGMusicRestoreLatch
+  ld hl,PSGMusicLastLatch
   call PSGINTplay_and_latch      ; output the byte and save data
   jp _intLoop
 
@@ -358,15 +342,15 @@ _substring:
 ; ************************************************************************************
 ; "internal function" to handle SFX, this gets called by PSGframe
 PSGframe_handlesfx:
-  ld a,(PSGSFXStatus)          ; check if we've got to play SFX
+  ld a,(PSGSFXStatus)            ; check if we've got to play SFX
   or a
   ret z
 
-  ld a,(PSGSFXSkipFrames)      ; check if we've got to skip frames
+  ld a,(PSGSFXSkipFrames)        ; check if we've got to skip frames
   or a
   jp nz,_skipFrame
 
-  ld a,(PSGSFXRestoreLatch)       ; in case that the playing music changed the current channel
+  ld a,(PSGSFXLastLatch)         ; in case that the playing music changed the current channel
   out (PSGDataPort),a
 
 _intLoop:
@@ -390,7 +374,7 @@ _continue:
   jp c,_command                  ; if less than $40 then it's a command
 
 _send2PSG:
-  ld hl,PSGSFXRestoreLatch
+  ld hl,PSGSFXLastLatch
   call PSGINTplay_and_latch      ; output the byte and save data
   jp _intLoop
 
@@ -411,7 +395,7 @@ _otherCommands:
   cp PSGSubString
   jp p,_substring
   cp PSGEnd
-  jp z,_sfxLoop                  ;  BETA: SFX can't have any loop ATM
+  jp z,_sfxLoop
   cp PSGLoop
   jp z,_setLoopPoint
 
@@ -502,14 +486,8 @@ _isTone:
   PSGMusicSubstringRetAddr   dw    ; return to this address when substring is over
   
   ; PSG music latch
-  PSGMusicLastLatch          db    ; the last music latch command for the PSG
-  PSGMusicRestoreLatch       db    ; the last music latch that's needed for restoring
+  PSGMusicLastLatch       db    ; the last music latch that's needed for restoring
 
-/*
-  ; filler (BETA):
-  filler                     dsb   4
-*/
-  
   ; ******* SFX *************
 
   ; command buffering for channels 2-3
@@ -521,11 +499,6 @@ _isTone:
   PSGChannel2SFX             db    ; 1 means channel 2 is allocated to SFX
   PSGChannel3SFX             db    ; 1 means channel 3 is allocated to SFX
 
-/*
-  ; filler (BETA):
-  filler_2                   dsb   9
-*/
-  
   ; fundamental vars for SFX
   PSGSFXStatus               db    ; are we playing a SFX?
   PSGSFXStart                dw    ; the pointer to the beginning of SFX
@@ -539,6 +512,5 @@ _isTone:
   PSGSFXSubstringRetAddr     dw    ; return to this address when substring is over
 
   ; PSG SFX latch
-  PSGSFXLastLatch            db    ; the last SFX latch command for the PSG
-  PSGSFXRestoreLatch         db    ; the last SFX latch that's needed for restoring
+  PSGSFXLastLatch         db    ; the last SFX latch that's needed for restoring
 .ends
