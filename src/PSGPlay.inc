@@ -29,7 +29,7 @@
 .section "PSGInit" free
 ; ************************************************************************************
 ; initialize PSG 'engine'
-; destroys A
+; destroys AF
 PSGInit:
   xor a                           ; ld a,PSG_STOPPED
   ld (PSGMusicStatus),a           ; set music status to PSG_STOPPED
@@ -168,7 +168,7 @@ PSGSFXStop:
 PSGFrame:
   ld a,(PSGMusicStatus)          ; check if we've got to play a tune
   or a
-  jp z,PSGframe_handlesfx
+  ret z
 
   ld a,(PSGMusicSkipFrames)      ; check if we've got to skip frames
   or a
@@ -221,7 +221,7 @@ _continue:
 _skipFrame:
   dec a
   ld (PSGMusicSkipFrames),a
-  jp PSGframe_handlesfx
+  ret
 
 _freq:
   ld hl,PSGChan23LowTone
@@ -241,11 +241,11 @@ _freq:
   
 _command:
   cp PSGWait
-  jp z, PSGframe_handlesfx       ; frame done, no additional frames
+  ret z                          ; frame done, no additional frames
   jp c,_otherCommands
   and $07                        ; take only the last 3 bits
   ld (PSGMusicSkipFrames),a
-  jp PSGframe_handlesfx
+  ret
   
 _send2PSG_B:
   ld a,b
@@ -309,7 +309,7 @@ _otherCommands:
   ; if we do, it means the PSG file is probably corrupted, so we just RET
   ; ***************************************************************************
 
-  jp PSGframe_handlesfx
+  ret
   
 _setLoopPoint:
   ld (PSGMusicLoopPoint),hl
@@ -334,14 +334,11 @@ _substring:
   jp _intLoop
 .ends
 
+.section "PSGSFXFrame" free
 ; ************************************************************************************
-;  'internal' functions
-; ************************************************************************************
-
-.section "PSGframe_handlesfx" free
-; ************************************************************************************
-; "internal function" to handle SFX, this gets called by PSGframe
-PSGframe_handlesfx:
+; processes a SFX frame
+; destroys AF,HL,BC
+PSGSFXFrame:
   ld a,(PSGSFXStatus)            ; check if we've got to play SFX
   or a
   ret z
@@ -425,7 +422,7 @@ _gotoLoopPoint:
   
 _substring:
   sub (PSGSubString-4)                ; len is value - $08 + 4
-  ld (PSGSFXSubstringLen),a         ; save len
+  ld (PSGSFXSubstringLen),a           ; save len
   ld c,(hl)                           ; load substring address (offset)
   inc hl
   ld b,(hl)
@@ -438,6 +435,10 @@ _substring:
 
   ret
 .ends
+
+; ************************************************************************************
+;  'internal' functions
+; ************************************************************************************
 
 .section "PSG INT play and latch" free
 ; this plays the PSG byte in A
@@ -486,7 +487,7 @@ _isTone:
   PSGMusicSubstringRetAddr   dw    ; return to this address when substring is over
   
   ; PSG music latch
-  PSGMusicLastLatch       db    ; the last music latch that's needed for restoring
+  PSGMusicLastLatch          db    ; the last music latch that's needed for restoring
 
   ; ******* SFX *************
 
@@ -496,21 +497,21 @@ _isTone:
   PSGChan2HighTone           db       ; the high tone bits for channel 2
   
   ; flags for channels 2-3 access
-  PSGChannel2SFX             db    ; 1 means channel 2 is allocated to SFX
-  PSGChannel3SFX             db    ; 1 means channel 3 is allocated to SFX
+  PSGChannel2SFX             db       ; 1 means channel 2 is allocated to SFX
+  PSGChannel3SFX             db       ; 1 means channel 3 is allocated to SFX
 
   ; fundamental vars for SFX
-  PSGSFXStatus               db    ; are we playing a SFX?
-  PSGSFXStart                dw    ; the pointer to the beginning of SFX
-  PSGSFXPointer              dw    ; the pointer to the current address
-  PSGSFXLoopPoint            dw    ; the pointer to the loop begin
-  PSGSFXSkipFrames           db    ; the frames we need to skip
-  PSGSFXLoopFlag             db    ; the SFX should loop or not (flag)
+  PSGSFXStatus               db       ; are we playing a SFX?
+  PSGSFXStart                dw       ; the pointer to the beginning of SFX
+  PSGSFXPointer              dw       ; the pointer to the current address
+  PSGSFXLoopPoint            dw       ; the pointer to the loop begin
+  PSGSFXSkipFrames           db       ; the frames we need to skip
+  PSGSFXLoopFlag             db       ; the SFX should loop or not (flag)
 
   ; decompression vars for SFX
-  PSGSFXSubstringLen         db    ; lenght of the substring we are playing
-  PSGSFXSubstringRetAddr     dw    ; return to this address when substring is over
+  PSGSFXSubstringLen         db       ; lenght of the substring we are playing
+  PSGSFXSubstringRetAddr     dw       ; return to this address when substring is over
 
   ; PSG SFX latch
-  PSGSFXLastLatch         db    ; the last SFX latch that's needed for restoring
+  PSGSFXLastLatch            db       ; the last SFX latch that's needed for restoring
 .ends

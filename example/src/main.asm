@@ -134,6 +134,8 @@ main:
 _intLoop:
   call waitForVBlank            ; wait for vertical blanking
   call PSGFrame			; process next music frame
+  ; here your can do bank switching if needed
+  call PSGSFXFrame              ; process next SFX frame
 
   in a,(VDPVCounter)
   ld hl,MaxVCount
