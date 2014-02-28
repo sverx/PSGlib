@@ -15,7 +15,7 @@ Typical workflow:
 
 5) call PSGInit once somewhere near the beginning of your code.
 
-6) Set up a steady interrupt (vertical blanking for instance) so to call PSGFrame at a constant pace. (very important!)
+6) Set up a steady interrupt (vertical blanking for instance) so to call PSGFrame and PSGSFXFrame at a constant pace. (very important!)
 
 7) Start/stop tunes when needed using PSGPlay and PSGStop calls, start/cancel SFXs when needed using PSGSFXPlay and PSGSFXStop calls. Looping SFXs are supported too, fire them using a PSGSFXPlayLoop call.
 
