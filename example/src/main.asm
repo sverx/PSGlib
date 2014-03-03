@@ -109,7 +109,7 @@ _Data:
 _End:
 .ends
 
-.include "PSGPlay.inc"          ; include the library
+.include "PSGlib.inc"          ; include the library
 
 .section "main" free
 main:
