@@ -1,5 +1,5 @@
-PSGPlay
-=======
+PSGlib
+======
 
 Z80 ASM library (and C conversion/compression tools) to allow replay of VGMs as background music/SFX in SEGA 8 bit homebrew programs
 
