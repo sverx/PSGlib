@@ -89,13 +89,12 @@ PSGStop:
 ; receive in C the mask that indicates which channel(s) the SFX will use
 ; destroy AF
 PSGSFXPlayLoop:
-  ld a,$1
-  ld (PSGSFXLoopFlag),a         ; SFX _IS_ a looping one
+  ld a,$1                       ; SFX _IS_ a looping one
   jp +
 PSGSFXPlay:
-  xor a
-  ld (PSGSFXLoopFlag),a         ; SFX is _NOT_ a looping one
-+:ld (PSGSFXStart),hl           ; store begin of SFX
+  xor a                         ; SFX is _NOT_ a looping one
++:ld (PSGSFXLoopFlag),a
+  ld (PSGSFXStart),hl           ; store begin of SFX
   ld (PSGSFXPointer),hl         ; set the pointer to begin of SFX
   ld (PSGSFXLoopPoint),hl       ; looppointer points to begin too
   xor a
@@ -105,16 +104,13 @@ PSGSFXPlay:
   jr z,+
   ld a,PSGLatch|PSGChannel2|PSGVolumeData|$0F   ; latch channel 2, volume=0xF (silent)
   out (PSGDataPort),a
+  ld a,PSG_PLAYING
+  ld (PSGChannel2SFX),a
 +:bit 1,c                       ; channel 3 needed?
   jr z,+
   ld a,PSGLatch|PSGChannel3|PSGVolumeData|$0F   ; latch channel 3, volume=0xF (silent)
   out (PSGDataPort),a
-+:ld a,PSG_PLAYING
-  bit 0,c                       ; channel 2 used?
-  jr z,+
-  ld (PSGChannel2SFX),a
-+:bit 1,c                       ; channel 3 used?
-  jr z,+
+  ld a,PSG_PLAYING
   ld (PSGChannel3SFX),a
 +:ld (PSGSFXStatus),a           ; set status to PSG_PLAYING
   ret
