@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define     VGM_HEADERSIZE          64      // 'old' VGM header
-//#define     VGM_HEADERSIZE          256     // VGM header 1.70
+#define     VGM_OLD_HEADERSIZE      64        // 'old' VGM header
 #define     VGM_HEADER_LOOPPOINT    0x1C
+#define     VGM_DATA_OFFSET         0x34
 
 #define     VGM_GGSTEREO    0x4F
 #define     VGM_PSGFOLLOWS  0x50
@@ -22,6 +22,7 @@
 #define     CHANNELS        4
 
 unsigned int loop_offset;
+unsigned int data_offset;
 FILE *fIN;
 FILE *fOUT;
   
@@ -88,14 +89,22 @@ int main (int argc, char *argv[]) {
   fOUT=fopen(argv[2],"wb");
   
   fseek(fIN,VGM_HEADER_LOOPPOINT,SEEK_SET);  // seek to LOOPPOINT in the VGM header
-
-  fread (&loop_offset, 4, 1, fIN);      // read loop_offset
- 
-  fseek(fIN,VGM_HEADERSIZE,SEEK_SET);   // skip VGM header
+  fread (&loop_offset, 4, 1, fIN);           // read loop_offset
+  
+  fseek(fIN,VGM_DATA_OFFSET,SEEK_SET);       // seek to DATAOFFSET in the VGM header
+  fread (&data_offset, 4, 1, fIN);           // read data_offset
+  
+  if (data_offset) {
+    fseek(fIN,VGM_DATA_OFFSET+data_offset,SEEK_SET);  // skip VGM header
+    data_offset=VGM_DATA_OFFSET+data_offset;
+  } else {
+    fseek(fIN,VGM_OLD_HEADERSIZE,SEEK_SET);           // skip 'old' VGM header
+    data_offset=VGM_OLD_HEADERSIZE;
+  }
   
   if (loop_offset!=0) {
     printf ("Info: loop point at 0x%08x\n",loop_offset);
-    loop_offset=loop_offset+VGM_HEADER_LOOPPOINT-VGM_HEADERSIZE;
+    loop_offset=loop_offset+VGM_HEADER_LOOPPOINT-data_offset;
   } else 
     printf ("Info: no loop point defined\n");
     
