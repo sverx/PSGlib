@@ -35,7 +35,11 @@ int main (int argc, char *argv[]) {
   fclose (fIN);
   
   printf ("Info: input file size is %d bytes\n",size);
-  printf ("Info: this will take a while...");
+  
+  if (size>=4*1024)                             // just for fun
+    printf ("Info: this will take a while...");   
+  else
+    printf ("Info: compression started...");
   
   // start 'consolidating' from beginning of buf[4], to end-4
   for (consolidate=MIN_LEN; consolidate<(size-MIN_LEN); consolidate++) {
