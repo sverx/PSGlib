@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define     FALSE                   0
+#define     TRUE                    1
+
 #define     VGM_OLD_HEADERSIZE      64        // 'old' VGM header
 #define     VGM_HEADER_LOOPPOINT    0x1C
 #define     VGM_DATA_OFFSET         0x34
@@ -18,8 +21,9 @@
 #define     PSG_LOOPMARKER  0x01
 #define     PSG_WAIT        0x38
 
-
 #define     CHANNELS        4
+
+
 
 unsigned int loop_offset;
 unsigned int data_offset;
@@ -53,7 +57,9 @@ int main (int argc, char *argv[]) {
   int ss,fs;
   int active[CHANNELS];
   int is_sfx=0;
-  int latched=0;
+  int latched_chn=0;
+  int lastlatch=0x9F;   // latch volume silent on channel 0
+  int first_byte=TRUE;
 
   if ((argc<3) || (argc>4)) {
     printf ("Usage: vgm2psg inputfile.VGM outputfile.PSG [2|3|23]\n");
@@ -126,15 +132,21 @@ int main (int argc, char *argv[]) {
      
       case VGM_PSGFOLLOWS:          // PSG byte follows
         c=fgetc(fIN);
-        c=(c&0x80)?c:(c|0x40);    // make sure DATA bytes have 1 as 6th bit
         
-        if (!is_sfx)
+        if (c&0x80) {
+          lastlatch=c;                // latch value
+          latched_chn=(c&0x60)>>5;   // isolate chn number
+        } else {
+          c|=0x40;                   // make sure DATA bytes have 1 as 6th bit
+        }
+
+        if ((!is_sfx) || (active[latched_chn])) {   // output only if on an active channel
+          if ((first_byte) && ((c&0x80)==0)) {
+            fputc(lastlatch,fOUT);
+            printf("debug: latch added\n");
+          }
           fputc(c,fOUT);
-        else {
-          if (c&0x80)
-            latched=(c&0x60)>>5;   // isolate chn number
-          if (active[latched])
-            fputc(c,fOUT);        // output only if on an active channel
+          first_byte=FALSE;
         }
         
         decLoopOffset(1);
@@ -156,6 +168,9 @@ int main (int argc, char *argv[]) {
         
         fputc(PSG_WAIT+fs,fOUT);   // write PSG_WAIT+[0 to MAX_WAIT] to file
         if (checkLoopOffset()) writeLoopMarker();
+        
+        first_byte=TRUE;
+        
         break;
         
       case VGM_SAMPLESKIP:         // sample skip, now count how many
@@ -179,7 +194,10 @@ int main (int argc, char *argv[]) {
           fputc(PSG_WAIT+(fs-1),fOUT);    // write PSG_WAIT+[0 to 7] to file, don't do it if 0
           
         decLoopOffset(2);
-        if (checkLoopOffset()) writeLoopMarker(); 
+        if (checkLoopOffset()) writeLoopMarker();
+        
+        first_byte=TRUE;
+        
         break;
       
         

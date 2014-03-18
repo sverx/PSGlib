@@ -9,7 +9,7 @@
 .define VDPStatusPort       $bf ; (r/o)
 .define VDPVCounter         $7e ; (r/o)
 
-.define TileMapAddress      ($3600 | (writeVRAM<<8)) ; ORed with $4000 for setting VRAM address
+.define TileMapAddress      ($3800 | (writeVRAM<<8)) ; ORed with $4000 for setting VRAM address
 .define SpriteTableAddress  ($3f00 | (writeVRAM<<8))
 .define SpriteSet           1   ; 0 for sprites to use tiles 0-255, 1 for 256-511
 
@@ -170,10 +170,7 @@ _end:
   ld d,b                        ; save original value
   jp _intLoop
 
-
-
   call PSGStop                  ; we won't never get here, actually...
-  call PSGSFXPlayLoop
 
 .ends
 
