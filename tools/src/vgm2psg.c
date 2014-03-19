@@ -62,8 +62,10 @@ int main (int argc, char *argv[]) {
   int first_byte=TRUE;
 
   if ((argc<3) || (argc>4)) {
+    printf ("*** Sverx's VGM to PSG converter ***\n");
     printf ("Usage: vgm2psg inputfile.VGM outputfile.PSG [2|3|23]\n");
-    printf (" the optional third parameter specifies the active channels for SFX conversions\n");
+    printf (" the optional third parameter specifies which channel(s) should be active,\n");
+    printf (" for SFX conversion:\n");
     printf (" - 2 means the SFX is using channel 2 only\n");
     printf (" - 3 means the SFX is using channel 3 (noise) only\n");
     printf (" - 23 means the SFX is using both channels\n");
@@ -143,7 +145,7 @@ int main (int argc, char *argv[]) {
         if ((!is_sfx) || (active[latched_chn])) {   // output only if on an active channel
           if ((first_byte) && ((c&0x80)==0)) {
             fputc(lastlatch,fOUT);
-            printf("debug: latch added\n");
+            printf("Warning: added missing latch command in frame start\n");
           }
           fputc(c,fOUT);
           first_byte=FALSE;
@@ -219,7 +221,11 @@ int main (int argc, char *argv[]) {
   
   fclose (fIN);
   fclose (fOUT);
-  if (fatal==0)
+  
+  if (!fatal) {
     printf ("Info: conversion complete\n");
-  return(0);
+    return(0);
+  } else {
+    return(1);
+  }
 }
