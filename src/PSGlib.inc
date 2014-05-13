@@ -1,5 +1,6 @@
 ;==============================================================
-; PSGlib library
+; PSGlib library - by sverx
+; https://github.com/sverx/PSGlib
 ;==============================================================
 
 .define      PSG_STOPPED         0
@@ -199,7 +200,41 @@ _continue:
   cp PSGLatch                    ; is it a latch?
   jr c,_noLatch                  ; if < $80 then it's NOT a latch
   ld (PSGMusicLastLatch),a       ; it's a latch - save it
-  jp _output_Latch
+  
+  ; we've got the latch PSG byte both in A and in B
+  ; and we have to check if the value should pass to PSG or not
+  bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
+  jr z,_send2PSG_A               ; jump if it's for channels 0-1
+  bit 4,a                        ; test if it's a volume
+  jr z,_low_part_Tone            ; jump if tone data (it's the low part)
+  bit 5,a                        ; test if volume it's for channel 2 or 3
+  jr z,+                         ; jump for channel 2
+  ld (PSGChan3Volume),a          ; save volume data
+  ld a,(PSGChannel3SFX)          ; channel 3 free?
+  or a
+  jr z,_send2PSG
+  jp _intLoop
++:ld (PSGChan2Volume),a          ; save volume data
+  ld a,(PSGChannel2SFX)          ; channel 2 free?
+  or a
+  jr z,_send2PSG
+  jp _intLoop
+  
+_low_part_Tone:
+  ; we've got the latch PSG byte both in A and in B
+  ; and we have to check if the value should pass to PSG or not
+  bit 5,a                        ; test if tone it's for channel 2 or 3
+  jr z,+                         ; jump if channel 2
+  ld (PSGChan3LowTone),a         ; save tone LOW data
+  ld a,(PSGChannel3SFX)          ; channel 3 free?
+  or a
+  jr z,_send2PSG
+  jp _intLoop
++:ld (PSGChan2LowTone),a         ; save tone LOW data
+  ld a,(PSGChannel2SFX)          ; channel 2 free?
+  or a
+  jr z,_send2PSG
+  jp _intLoop
   
 _skipFrame:
   dec a
@@ -226,25 +261,18 @@ _command:
   jr z,_gotoLoopPoint
   cp PSGLoop
   jr z,_setLoopPoint
-  
-_output_Latch:
-  ; we've got the latch PSG byte both in A and in B
-  ; and we have to check if the value should pass to PSG or not
-  bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
-  jr z,_send2PSG_A               ; jump if it's for channels 0-1
-  bit 4,a                        ; test if it's a volume
-  jr z,_low_part_Tone            ; jump if tone data (it's the low part)
-  bit 5,a                        ; test if volume it's for channel 2 or 3
-  jr z,+                         ; jump for channel 2
-  ld (PSGChan3Volume),a          ; save volume data
-  ld a,(PSGChannel3SFX)          ; channel 3 free?
-  or a
-  jr z,_send2PSG
-  jp _intLoop
-+:ld (PSGChan2Volume),a          ; save volume data
-  ld a,(PSGChannel2SFX)          ; channel 2 free?
-  or a
-  jr z,_send2PSG
+
+  ; ***************************************************************************
+  ; we should never get here!
+  ; if we do, it means the PSG SFX file is probably corrupted, so we just RET
+  ; ***************************************************************************
+
+  ret
+
+_send2PSG:
+  ld a,b
+_send2PSG_A:
+  out (PSGDataPort),a              ; output the byte
   jp _intLoop
 
 _output_NoLatch:
@@ -291,28 +319,6 @@ _substring:
   ld (PSGMusicPointer),hl             ; make substring current
   jp _intLoop
   
-_send2PSG:
-  ld a,b
-_send2PSG_A:
-  out (PSGDataPort),a              ; output the byte
-  jp _intLoop
-
-_low_part_Tone:
-  ; we've got the latch PSG byte both in A and in B
-  ; and we have to check if the value should pass to PSG or not
-  bit 5,a                        ; test if tone it's for channel 2 or 3
-  jr z,+                         ; jump if channel 2
-  ld (PSGChan3LowTone),a         ; save tone LOW data
-  ld a,(PSGChannel3SFX)          ; channel 3 free?
-  or a
-  jr z,_send2PSG
-  jp _intLoop
-+:ld (PSGChan2LowTone),a         ; save tone LOW data
-  ld a,(PSGChannel2SFX)          ; channel 2 free?
-  or a
-  jr z,_send2PSG
-  jp _intLoop
-
 _high_part_Tone:
   ; we got the last latch in A and the PSG data in B
   ; and we have to check if the value should pass to PSG or not
@@ -351,8 +357,6 @@ _intLoop:
   ld hl,(PSGSFXPointer)          ; load next byte
   ld b,(hl)                      ; save it in B, temporary
   inc hl                         ; point to next byte
-  ld (PSGSFXPointer),hl
-  
   ld a,(PSGSFXSubstringLen)      ; read substring len
   or a                           ; check if it's 0 (we're not in a substring)
   jr z,_continue
@@ -360,9 +364,9 @@ _intLoop:
   ld (PSGSFXSubstringLen),a      ; save len
   jr nz,_continue
   ld hl,(PSGSFXSubstringRetAddr) ; substring over, retrieve return address
-  ld (PSGSFXPointer),hl
 
 _continue:
+  ld (PSGSFXPointer),hl          ; save current address
   ld a,b                         ; restore byte
   cp PSGData
   jp c,_command                  ; if less than $40 then it's a command
@@ -421,7 +425,7 @@ _substring:
   jp _intLoop
 .ends
 
-.ramsection "PSGPlay variables" slot 3
+.ramsection "PSGlib variables" slot 3
   ; fundamental vars
   PSGMusicStatus             db    ; are we playing a background music?
   PSGMusicStart              dw    ; the pointer to the beginning of music
