@@ -26,10 +26,9 @@
 .define      SFX_CHANNEL3        $02
 .define      SFX_CHANNELS2AND3   SFX_CHANNEL2|SFX_CHANNEL3
 
-
 .section "PSGInit" free
 ; ************************************************************************************
-; initialize PSG 'engine'
+; initializes the PSG 'engine'
 ; destroys AF
 PSGInit:
   xor a                           ; ld a,PSG_STOPPED
@@ -45,6 +44,7 @@ PSGInit:
 ; receives in HL the address of the PSG to start playing
 ; destroys AF
 PSGPlay:
+  call PSGStop                    ; if there's a tune already playing, we should stop it!
   ld (PSGMusicStart),hl           ; store the begin point of music
   ld (PSGMusicPointer),hl         ; set music pointer to begin of music
   ld (PSGMusicLoopPoint),hl       ; looppointer points to begin too
@@ -85,12 +85,11 @@ PSGStop:
   ret
 .ends
 
-.section "PSGSFXPlay" free
+.section "PSGSFXPlay and PSGSFXPlayLoop" free
 ; ************************************************************************************
-; (both "PSGSFXPlay" and "PSGSFXPlayLoop")
-; receive in HL the address of the SFX PSG to start
-; receive in C the mask that indicates which channel(s) the SFX will use
-; destroy AF
+; receives in HL the address of the SFX PSG to start
+; receives in C the mask that indicates which channel(s) the SFX will use
+; destroys AF
 PSGSFXPlayLoop:
   ld a,$1                       ; SFX _IS_ a looping one
   jp +
@@ -118,6 +117,7 @@ PSGSFXPlay:
 
 .section "PSGSFXStop" free
 ; ************************************************************************************
+; stops the SFX (leaving the music on, if it's playing)
 ; destroys AF
 PSGSFXStop:
   ld a,(PSGSFXStatus)            ; check status
@@ -166,6 +166,16 @@ _skipRestore:
   ld (PSGChannel2SFX),a
   ld (PSGChannel3SFX),a
   ld (PSGSFXStatus),a            ; set status to PSG_STOPPED
+  ret
+.ends
+
+.section "PSGSFXCancelLoop" free
+; ************************************************************************************
+; sets the currently looping SFX to no more loops after the current
+; destroys AF
+PSGSFXCancelLoop:
+  xor a
+  ld (PSGSFXLoopFlag),a
   ret
 .ends
 
@@ -264,7 +274,7 @@ _command:
 
   ; ***************************************************************************
   ; we should never get here!
-  ; if we do, it means the PSG SFX file is probably corrupted, so we just RET
+  ; if we do, it means the PSG file is probably corrupted, so we just RET
   ; ***************************************************************************
 
   ret
