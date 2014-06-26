@@ -39,11 +39,16 @@ PSGInit:
   ret
 .ends
 
-.section "PSGPlay" free
+.section "PSGPlay and PSGPlayNoRepeat" free
 ; ************************************************************************************
 ; receives in HL the address of the PSG to start playing
 ; destroys AF
+PSGPlayNoRepeat:
+  xor a                           ; We don't want the song to loop
+  jp +
 PSGPlay:
+  ld a,$1                         ; the song can loop when finished
++:ld (PSGLoopFlag),a
   call PSGStop                    ; if there's a tune already playing, we should stop it!
   ld (PSGMusicStart),hl           ; store the begin point of music
   ld (PSGMusicPointer),hl         ; set music pointer to begin of music
@@ -82,6 +87,24 @@ PSGStop:
   out (PSGDataPort),a
 +:xor a                                         ; ld a,PSG_STOPPED
   ld (PSGMusicStatus),a                         ; set status to PSG_STOPPED
+  ret
+.ends
+
+.section "PSGCancelLoop" free
+; ************************************************************************************
+; sets the currently looping music to no more loops after the current
+; destroys AF
+PSGCancelLoop:
+  xor a
+  ld (PSGLoopFlag),a
+  ret
+.ends
+
+.section "PSGGetStatus" free
+; ************************************************************************************
+; gets the current status of music into register A
+PSGGetStatus:
+  ld a,(PSGMusicStatus)
   ret
 .ends
 
@@ -179,6 +202,14 @@ PSGSFXCancelLoop:
   ret
 .ends
 
+.section "PSGSFXGetStatus" free
+; ************************************************************************************
+; gets the current SFX status into register A
+PSGSFXGetStatus:
+  ld a,(PSGSFXStatus)
+  ret
+.ends
+
 .section "PSGFrame" free
 ; ************************************************************************************
 ; processes a music frame
@@ -268,7 +299,7 @@ _command:
 +:cp PSGSubString
   jr nc,_substring
   cp PSGEnd
-  jr z,_gotoLoopPoint
+  jr z,_musicLoop
   cp PSGLoop
   jr z,_setLoopPoint
 
@@ -311,7 +342,10 @@ _setLoopPoint:
   ld (PSGMusicLoopPoint),hl
   jp _intLoop
 
-_gotoLoopPoint:
+_musicLoop:
+  ld a,(PSGLoopFlag)               ; looping requested?
+  or a
+  jp z,PSGStop                     ; No:stop it! (tail call optimization)
   ld hl,(PSGMusicLoopPoint)
   ld (PSGMusicPointer),hl
   jp _intLoop
@@ -442,6 +476,7 @@ _substring:
   PSGMusicPointer            dw    ; the pointer to the current
   PSGMusicLoopPoint          dw    ; the pointer to the loop begin
   PSGMusicSkipFrames         db    ; the frames we need to skip
+  PSGLoopFlag                db    ; the tune should loop or not (flag)
   PSGMusicLastLatch          db    ; the last PSG music latch
 
   ; decompression vars
