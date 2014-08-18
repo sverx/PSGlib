@@ -55,7 +55,7 @@ int main (int argc, char *argv[]) {
         if (max_save<(testlen-3-skip)) {
     
           // haystack is from buf[0]
-          for (haystack=0; haystack<(consolidate+skip-testlen); haystack++) {
+          for (haystack=0; haystack<=(consolidate+skip-testlen); haystack++) {   // less or equal, not only less than
         
             needle=consolidate+skip;
       
