@@ -222,9 +222,10 @@ PSGFrame:
   ld a,(PSGMusicSkipFrames)      ; check if we've got to skip frames
   or a
   jr nz,_skipFrame
+  
+  ld hl,(PSGMusicPointer)        ; read current address
 
 _intLoop:
-  ld hl,(PSGMusicPointer)        ; current address
   ld b,(hl)                      ; load PSG byte (in B)
   inc hl                         ; point to next byte
   ld a,(PSGMusicSubstringLen)    ; read substring len
@@ -236,7 +237,6 @@ _intLoop:
   ld hl,(PSGMusicSubstringRetAddr)  ; substring is over, retrieve return address
 
 _continue:
-  ld (PSGMusicPointer),hl        ; save current address
   ld a,b                         ; copy PSG byte into A
   cp PSGLatch                    ; is it a latch?
   jr c,_noLatch                  ; if < $80 then it's NOT a latch
@@ -291,12 +291,16 @@ _noLatch:
 
 _command:
   cp PSGWait
-  ret z                          ; frame done, no additional frames
-  jr c,+                         ; other commands?
+  jr z,_done                     ; no additional frames
+  jr c,_otherCommands            ; other commands?
   and $07                        ; take only the last 3 bits for skip frames
-  ld (PSGMusicSkipFrames),a
-  ret                            ; frame done, with additional frames
-+:cp PSGSubString
+  ld (PSGMusicSkipFrames),a      ; we got additional frames
+_done:
+  ld (PSGMusicPointer),hl        ; save current address
+  ret                            ; frame done
+
+_otherCommands:
+  cp PSGSubString
   jr nc,_substring
   cp PSGEnd
   jr z,_musicLoop
@@ -347,11 +351,10 @@ _musicLoop:
   or a
   jp z,PSGStop                     ; No:stop it! (tail call optimization)
   ld hl,(PSGMusicLoopPoint)
-  ld (PSGMusicPointer),hl
   jp _intLoop
-  
+
 _substring:
-  sub (PSGSubString-4)                ; len is value - $08 + 4
+  sub PSGSubString-4                  ; len is value - $08 + 4
   ld (PSGMusicSubstringLen),a         ; save len
   ld c,(hl)                           ; load substring address (offset)
   inc hl
@@ -359,10 +362,9 @@ _substring:
   inc hl
   ld (PSGMusicSubstringRetAddr),hl    ; save return address
   ld hl,(PSGMusicStart)
-  add hl,bc
-  ld (PSGMusicPointer),hl             ; make substring current
+  add hl,bc                           ; make substring current
   jp _intLoop
-  
+
 _high_part_Tone:
   ; we got the last latch in A and the PSG data in B
   ; and we have to check if the value should pass to PSG or not
@@ -396,10 +398,11 @@ PSGSFXFrame:
   ld a,(PSGSFXSkipFrames)        ; check if we've got to skip frames
   or a
   jp nz,_skipFrame
+  
+  ld hl,(PSGSFXPointer)          ; read current SFX address
 
 _intLoop:
-  ld hl,(PSGSFXPointer)          ; load next byte
-  ld b,(hl)                      ; save it in B, temporary
+  ld b,(hl)                      ; load a byte in B, temporary
   inc hl                         ; point to next byte
   ld a,(PSGSFXSubstringLen)      ; read substring len
   or a                           ; check if it's 0 (we're not in a substring)
@@ -410,7 +413,6 @@ _intLoop:
   ld hl,(PSGSFXSubstringRetAddr) ; substring over, retrieve return address
 
 _continue:
-  ld (PSGSFXPointer),hl          ; save current address
   ld a,b                         ; restore byte
   cp PSGData
   jp c,_command                  ; if less than $40 then it's a command
@@ -424,12 +426,16 @@ _skipFrame:
 
 _command:
   cp PSGWait
-  ret z                          ; frame done, no additional frames
-  jr c,+                         ; other commands?
+  jr z,_done                     ; no additional frames
+  jr c,_otherCommands            ; other commands?
   and $07                        ; take only the last 3 bits for skip frames
-  ld (PSGSFXSkipFrames),a
-  ret                            ; frame done, with additional frames
-+:cp PSGSubString
+  ld (PSGSFXSkipFrames),a        ; we got additional frames to skip
+_done:
+  ld (PSGSFXPointer),hl          ; save current address
+  ret                            ; frame done
+
+_otherCommands:
+  cp PSGSubString
   jr nc,_substring
   cp PSGEnd
   jr z,_sfxLoop
@@ -464,8 +470,7 @@ _substring:
   inc hl
   ld (PSGSFXSubstringRetAddr),hl    ; save return address
   ld hl,(PSGSFXStart)
-  add hl,bc
-  ld (PSGSFXPointer),hl             ; make substring current
+  add hl,bc                         ; make substring current
   jp _intLoop
 .ends
 
