@@ -163,7 +163,7 @@ int main (int argc, char *argv[]) {
           decLoopOffset(1);
         } while ((fs<MAX_WAIT) && (c==VGM_FRAMESKIP) && (!checkLoopOffset()));
         
-        if (fs<MAX_WAIT) {
+        if (c!=VGM_FRAMESKIP) {
           ungetc(c,fIN);
           incLoopOffset();
         }
