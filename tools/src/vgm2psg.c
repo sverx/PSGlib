@@ -23,12 +23,19 @@
 
 #define     CHANNELS        4
 
-
-
 unsigned int loop_offset;
 unsigned int data_offset;
 FILE *fIN;
 FILE *fOUT;
+
+unsigned char volume[CHANNELS];
+unsigned short freq[CHANNELS];
+int volume_change[CHANNELS];
+int freq_change[CHANNELS];
+int frame_started = TRUE;
+int pause_started = FALSE;
+int pause_len = 0;
+unsigned char lastlatch=0x9F;   // latch volume silent on channel 0
   
 
 void decLoopOffset(int n) {
@@ -44,7 +51,116 @@ int checkLoopOffset(void) {        // returns 1 when loop_offset becomes 0
   return (loop_offset==0);
 }
 
+
+void init_frame(int initial_state) {
+  int i;
+  for (i=0;i<CHANNELS;i++) {
+    volume[i]=0x0F;
+    freq[i]=0;
+    volume_change[i]=initial_state;    
+    freq_change[i]=initial_state;
+  }
+  frame_started=initial_state;
+}
+
+void add_command (unsigned char c) {
+  int chn,typ;
+  if (c&0x80) {           // is a latch
+    chn=(c&0x60)>>5;
+    typ=(c&0x10)>>4;
+    if (typ==1) {
+      volume[chn]=c&0x0F;
+      volume_change[chn]=TRUE;
+    } else {
+      freq[chn]=(freq[chn]&0xFFF0)|(c&0x0F);
+      freq_change[chn]=TRUE;
+    }
+  } else {
+    chn=(lastlatch&0x60)>>5;
+    typ=(lastlatch&0x10)>>4;	
+    if (typ==1) {
+      volume[chn]=c&0x0F;
+      volume_change[chn]=TRUE;
+    } else {
+      freq[chn]=(freq[chn]&0x000F)|((c&0x3F)<<4);
+      freq_change[chn]=TRUE;
+    }	
+  }  	
+}
+
+void dump_frame(void) {
+  int i;
+  unsigned char c;
+  for (i=0;i<CHANNELS-1;i++) {
+    if (freq_change[i]) {
+      c=(freq[i]&0x0F)|(i<<5)|0x80;          // latch channel 0-2 freq
+      fputc(c,fOUT);
+      c=(freq[i]>>4)|0x40;                   // make sure DATA bytes have 1 as 6th bit
+      fputc(c,fOUT);
+    }
+    
+    if (volume_change[i]) {
+      c=0x90|(i<<5)|(volume[i]&0x0F);        // latch channel 0-2 volume
+      fputc(c,fOUT);
+    }
+
+  }
+  
+  if (freq_change[3]) {
+    c=(freq[i]&0x07)|0xE0;                   // latch channel 3 (noise)
+    fputc(c,fOUT);
+  }
+
+  if (volume_change[3]) {
+    c=0x90|(i<<5)|(volume[3]&0x0F);   // latch channel 3 volume
+    fputc(c,fOUT);
+  }
+}
+
+
+void dump_pause(void) {
+  if (pause_len>0) {
+    while (pause_len>MAX_WAIT) {
+          fputc(PSG_WAIT+MAX_WAIT,fOUT);   // write PSG_WAIT+7 to file
+          pause_len-=MAX_WAIT+1;           // skip MAX_WAIT+1 
+    }
+    if (pause_len>0)
+      fputc(PSG_WAIT+(pause_len-1),fOUT);  // write PSG_WAIT+[0 to 7] to file, don't do it if 0
+  }
+}
+
+void found_pause(void) {
+  if (frame_started) {
+    dump_frame();
+    init_frame(FALSE);
+  }
+  pause_started=TRUE;
+}
+
+void found_frame(void) {
+  if (pause_started)
+    dump_pause();
+  frame_started=TRUE;
+  
+  pause_started=FALSE;
+  pause_len=0;
+}
+
+void empty_data(void) {
+  if (pause_started) {
+    dump_pause();
+    pause_len=0;
+    pause_started=FALSE;
+  } else if (frame_started) {
+    dump_frame();
+    init_frame(FALSE);
+    frame_started=FALSE;
+  }
+}
+
+
 void writeLoopMarker(void) {
+  empty_data();
   fputc(PSG_LOOPMARKER,fOUT);
 }
 
@@ -58,9 +174,8 @@ int main (int argc, char *argv[]) {
   int active[CHANNELS];
   int is_sfx=0;
   int latched_chn=0;
-  int lastlatch=0x9F;   // latch volume silent on channel 0
   int first_byte=TRUE;
-
+  
   if ((argc<3) || (argc>4)) {
     printf ("*** Sverx's VGM to PSG converter ***\n");
     printf ("Usage: vgm2psg inputfile.VGM outputfile.PSG [2|3|23]\n");
@@ -86,12 +201,12 @@ int main (int argc, char *argv[]) {
           break;
       }
     }
-    
     is_sfx=1;
-    
     printf ("Info: SFX conversion on channel(s): %s%s\n",active[2]?"2":"",active[3]?"3":"");
   }
   
+      
+  init_frame(TRUE);
   
   fIN=fopen(argv[1],"rb");
   fOUT=fopen(argv[2],"wb");
@@ -113,8 +228,10 @@ int main (int argc, char *argv[]) {
   if (loop_offset!=0) {
     printf ("Info: loop point at 0x%08x\n",loop_offset);
     loop_offset=loop_offset+VGM_HEADER_LOOPPOINT-data_offset;
-  } else 
+  } else {
     printf ("Info: no loop point defined\n");
+    loop_offset=-1; // make it negative so that won't happen
+  }
     
   while ((!leave) && (!feof(fIN))) {
   
@@ -133,21 +250,25 @@ int main (int argc, char *argv[]) {
         break;
      
       case VGM_PSGFOLLOWS:          // PSG byte follows
+      
         c=fgetc(fIN);
         
         if (c&0x80) {
-          lastlatch=c;                // latch value
+          lastlatch=c;               // latch value
           latched_chn=(c&0x60)>>5;   // isolate chn number
         } else {
           c|=0x40;                   // make sure DATA bytes have 1 as 6th bit
         }
 
         if ((!is_sfx) || (active[latched_chn])) {   // output only if on an active channel
+        
+        found_frame();
+        
           if ((first_byte) && ((c&0x80)==0)) {
-            fputc(lastlatch,fOUT);
+            add_command(lastlatch);
             printf("Warning: added missing latch command in frame start\n");
           }
-          fputc(c,fOUT);
+          add_command(c);
           first_byte=FALSE;
         }
         
@@ -156,7 +277,10 @@ int main (int argc, char *argv[]) {
         break;
         
       case VGM_FRAMESKIP:          // frame skip, now count how many
-        fs=0;
+      
+        found_pause();
+      
+        fs=1;
         do {
           c=fgetc(fIN);
           if (c==VGM_FRAMESKIP) fs++;
@@ -168,7 +292,7 @@ int main (int argc, char *argv[]) {
           incLoopOffset();
         }
         
-        fputc(PSG_WAIT+fs,fOUT);   // write PSG_WAIT+[0 to MAX_WAIT] to file
+        pause_len+=fs;
         if (checkLoopOffset()) writeLoopMarker();
         
         first_byte=TRUE;
@@ -176,6 +300,9 @@ int main (int argc, char *argv[]) {
         break;
         
       case VGM_SAMPLESKIP:         // sample skip, now count how many
+      
+        found_pause();
+      
         c=fgetc(fIN);
         ss=c;
         c=fgetc(fIN);
@@ -187,14 +314,8 @@ int main (int argc, char *argv[]) {
             fs++;
         }
 
-        while (fs>MAX_WAIT) {
-          fputc(PSG_WAIT+MAX_WAIT,fOUT);   // write PSG_WAIT+7 to file
-          fs-=MAX_WAIT+1;                  // skip MAX_WAIT+1 
-        }
+        pause_len+=fs;
         
-        if (fs>0)
-          fputc(PSG_WAIT+(fs-1),fOUT);    // write PSG_WAIT+[0 to 7] to file, don't do it if 0
-          
         decLoopOffset(2);
         if (checkLoopOffset()) writeLoopMarker();
         
@@ -207,6 +328,7 @@ int main (int argc, char *argv[]) {
         leave=1;
         decLoopOffset(1);
         if (checkLoopOffset()) writeLoopMarker();
+        empty_data();
         fputc(PSG_ENDOFDATA,fOUT);
         break;
         
