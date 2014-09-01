@@ -28,17 +28,17 @@ unsigned int data_offset;
 FILE *fIN;
 FILE *fOUT;
 
-unsigned char volume[CHANNELS];
-unsigned short freq[CHANNELS];
-int volume_change[CHANNELS];
-int freq_change[CHANNELS];
-int frame_started = TRUE;
-int pause_started = FALSE;
-int pause_len = 0;
+unsigned char volume[CHANNELS]={0x0F,0x0F,0x0F,0x0F};  // starting volume = silence
+unsigned short freq[CHANNELS]={0,0,0,0};
+int volume_change[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
+int freq_change[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
+int frame_started=TRUE;
+int pause_started=FALSE;
+int pause_len=0;
 unsigned char lastlatch=0x9F;   // latch volume silent on channel 0
-int active[CHANNELS];
+int active[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
 int is_sfx=FALSE;
-  
+
 
 void decLoopOffset(int n) {
   loop_offset-=n;
@@ -57,10 +57,6 @@ int checkLoopOffset(void) {        // returns 1 when loop_offset becomes 0
 void init_frame(int initial_state) {
   int i;
   for (i=0;i<CHANNELS;i++) {
-    if (initial_state) {           //  set initial values only when required
-      volume[i]=0x0F;
-      freq[i]=0;
-    }
     if ((!initial_state) ||                                // set to FALSE
         ((initial_state) && (!is_sfx)) ||                  // or set to TRUE if it's not a SFX
         ((initial_state) && (is_sfx) && (active[i]))) {    // or set to TRUE if it's a SFX and the chn is active
@@ -120,7 +116,7 @@ void dump_frame(void) {
   }
 
   if (volume_change[3]) {
-    c=0x90|(i<<5)|(volume[3]&0x0F);   // latch channel 3 volume
+    c=0x90|(i<<5)|(volume[3]&0x0F);          // latch channel 3 volume
     fputc(c,fOUT);
   }
 }
@@ -162,7 +158,6 @@ void empty_data(void) {
   } else if (frame_started) {
     dump_frame();
     init_frame(FALSE);
-    frame_started=FALSE;
   }
 }
 
