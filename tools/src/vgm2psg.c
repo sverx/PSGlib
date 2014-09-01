@@ -36,6 +36,8 @@ int frame_started = TRUE;
 int pause_started = FALSE;
 int pause_len = 0;
 unsigned char lastlatch=0x9F;   // latch volume silent on channel 0
+int active[CHANNELS];
+int is_sfx=FALSE;
   
 
 void decLoopOffset(int n) {
@@ -55,10 +57,16 @@ int checkLoopOffset(void) {        // returns 1 when loop_offset becomes 0
 void init_frame(int initial_state) {
   int i;
   for (i=0;i<CHANNELS;i++) {
-    volume[i]=0x0F;
-    freq[i]=0;
-    volume_change[i]=initial_state;    
-    freq_change[i]=initial_state;
+    if (initial_state) {           //  set initial values only when required
+      volume[i]=0x0F;
+      freq[i]=0;
+    }
+    if ((!initial_state) ||                                // set to FALSE
+        ((initial_state) && (!is_sfx)) ||                  // or set to TRUE if it's not a SFX
+        ((initial_state) && (is_sfx) && (active[i]))) {    // or set to TRUE if it's a SFX and the chn is active
+      volume_change[i]=initial_state;    
+      freq_change[i]=initial_state;
+    }
   }
   frame_started=initial_state;
 }
@@ -171,8 +179,6 @@ int main (int argc, char *argv[]) {
   int leave=0;
   int fatal=0;
   int ss,fs;
-  int active[CHANNELS];
-  int is_sfx=0;
   int latched_chn=0;
   int first_byte=TRUE;
   
@@ -201,11 +207,10 @@ int main (int argc, char *argv[]) {
           break;
       }
     }
-    is_sfx=1;
+    is_sfx=TRUE;
     printf ("Info: SFX conversion on channel(s): %s%s\n",active[2]?"2":"",active[3]?"3":"");
   }
   
-      
   init_frame(TRUE);
   
   fIN=fopen(argv[1],"rb");
