@@ -5,7 +5,7 @@ Z80 ASM library (and C conversion/compression tools) to allow replay of VGMs as 
 
 Typical workflow:
 
-1) You (or a friend of yours) track one or more module(s) and SFX(s) using either Mod2PSG2 or DefleMask (or whatever you prefer as long as it supports exporting in VGM format).
+1) You (or a friend of yours) track one or more module(s) and SFX(s) using either Mod2PSG2 or DefleMask or VGM Music Maker (or whatever tool you prefer as long as it supports exporting in VGM format).
 
 2) Optional, but warmly suggested: optimize your VGM(s) using Maxim's VGMTool
 
