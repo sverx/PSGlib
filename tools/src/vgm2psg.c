@@ -170,7 +170,8 @@ void writeLoopMarker(void) {
 
 int main (int argc, char *argv[]) {
 
-  int i,c;
+  unsigned int i;
+  int c;
   int leave=0;
   int fatal=0;
   int ss,fs;
@@ -244,7 +245,7 @@ int main (int argc, char *argv[]) {
       case VGM_GGSTEREO:            // stereo data byte follows
         // BETA: this is simply DISCARDED atm
         c=fgetc(fIN);
-        printf("Warning: GameGear stereo info discarded\n",c);
+        printf("Warning: GameGear stereo info discarded\n");
         decLoopOffset(1);
         if (checkLoopOffset()) writeLoopMarker();
         break;
@@ -309,7 +310,7 @@ int main (int argc, char *argv[]) {
         ss+=c*256;
         fs=ss/0x2df;                   // samples to NTSC frames
         if ((ss%0x2df)!=0) {
-          printf("Warning: pause length isn't perfectly frame sync'd\n",c);
+          printf("Warning: pause length isn't perfectly frame sync'd\n");
           if ((ss%0x2df)>(0x2df/2))   // round to closest int
             fs++;
         }

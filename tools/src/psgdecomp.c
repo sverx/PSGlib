@@ -48,6 +48,6 @@ int main (int argc, char *argv[]) {
   
   fclose (fOUT);
 
-  printf ("Info: done!\n",size);
+  printf ("Info: done!\n");
   return(0);
 }

@@ -19,7 +19,7 @@ int size;
 
 int main (int argc, char *argv[]) {
 
-  int testlen, haystack, consolidate, count;
+  int testlen, haystack, consolidate;
   
   int skip, needle;
   
