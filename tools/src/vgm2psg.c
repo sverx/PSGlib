@@ -177,9 +177,11 @@ int main (int argc, char *argv[]) {
   int ss,fs;
   int latched_chn=0;
   int first_byte=TRUE;
+  unsigned int file_signature;
+  
+  printf ("*** Sverx's VGM to PSG converter ***\n");
   
   if ((argc<3) || (argc>4)) {
-    printf ("*** Sverx's VGM to PSG converter ***\n");
     printf ("Usage: vgm2psg inputfile.VGM outputfile.PSG [2|3|23]\n");
     printf (" the optional third parameter specifies which channel(s) should be active,\n");
     printf (" for SFX conversion:\n");
@@ -210,8 +212,23 @@ int main (int argc, char *argv[]) {
   init_frame(TRUE);
   
   fIN=fopen(argv[1],"rb");
-  fOUT=fopen(argv[2],"wb");
+  if (!fIN) {
+    printf("Fatal: can't open input VGM file\n");
+    return(1);
+  }
   
+  fread (&file_signature, 4, 1, fIN);
+  if (file_signature!=0x206d6756) {    // check for 'Vgm ' file signature
+    printf("Fatal: input VGM file doesn't seem a valid *uncompressed* VGM file\n");
+    return(1);
+  }
+
+  fOUT=fopen(argv[2],"wb");
+  if (!fOUT) {
+    printf("Fatal: can't write to output PSG file\n");
+    return(1);
+  }
+
   fseek(fIN,VGM_HEADER_LOOPPOINT,SEEK_SET);  // seek to LOOPPOINT in the VGM header
   fread (&loop_offset, 4, 1, fIN);           // read loop_offset
   
