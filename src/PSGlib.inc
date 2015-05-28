@@ -36,6 +36,7 @@ PSGInit:
   ld (PSGSFXStatus),a             ; set SFX status to PSG_STOPPED
   ld (PSGChannel2SFX),a           ; set channel 2 SFX to PSG_STOPPED
   ld (PSGChannel3SFX),a           ; set channel 3 SFX to PSG_STOPPED
+  ld (PSGMusicVolumeAttenuation),a  ; volume attenuation = none
   ret
 .ends
 
@@ -105,6 +106,65 @@ PSGCancelLoop:
 ; gets the current status of music into register A
 PSGGetStatus:
   ld a,(PSGMusicStatus)
+  ret
+.ends
+
+.section "PSGSetMusicVolumeAttenuation" free
+; ************************************************************************************
+; receives in L the volume attenuation for the music (0-15)
+; destroys AF
+PSGSetMusicVolumeAttenuation:
+  ld a,l
+  ld (PSGMusicVolumeAttenuation),a
+  ld a,(PSGMusicStatus)            ; if tune is not playing, leave
+  or a
+  ret z
+
+  ld a,(PSGChan0Volume)
+  and $0F
+  add a,l
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel0|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+  
+  ld a,(PSGChan1Volume)
+  and $0F
+  add a,l
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel1|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+
+  ld a,(PSGChannel2SFX)            ; channel 2 busy with SFX?
+  or a
+  jr nz,_restore_channel3          ; if so, skip channel 2
+
+  ld a,(PSGChan2Volume)
+  and $0F
+  add a,l
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel2|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+
+_restore_channel3:
+  ld a,(PSGChannel3SFX)            ; channel 2 busy with SFX?
+  or a
+  ret nz                           ; if so, we're done
+
+  ld a,(PSGChan3Volume)
+  and $0F
+  add a,l
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel3|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+
   ret
 .ends
 
@@ -240,41 +300,52 @@ _continue:
   ld a,b                         ; copy PSG byte into A
   cp PSGLatch                    ; is it a latch?
   jr c,_noLatch                  ; if < $80 then it's NOT a latch
-  ld (PSGMusicLastLatch),a       ; it's a latch - save it
+  ld (PSGMusicLastLatch),a       ; it's a latch - save it in 'LastLatch'
   
   ; we've got the latch PSG byte both in A and in B
   ; and we have to check if the value should pass to PSG or not
-  bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
-  jr z,_send2PSG_A               ; jump if it's for channels 0-1
   bit 4,a                        ; test if it's a volume
-  jr z,_low_part_Tone            ; jump if tone data (it's the low part)
-  bit 5,a                        ; test if volume it's for channel 2 or 3
-  jr z,+                         ; jump for channel 2
-  ld (PSGChan3Volume),a          ; save volume data
-  ld a,(PSGChannel3SFX)          ; channel 3 free?
-  or a
-  jr z,_send2PSG
-  jp _intLoop
-+:ld (PSGChan2Volume),a          ; save volume data
-  ld a,(PSGChannel2SFX)          ; channel 2 free?
-  or a
-  jr z,_send2PSG
-  jp _intLoop
-  
-_low_part_Tone:
-  ; we've got the latch PSG byte both in A and in B
-  ; and we have to check if the value should pass to PSG or not
+  jr nz,_latch_Volume            ; jump if volume data
+  bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
+  jr z,_send2PSG_A               ; send data to PSG if it's for channels 0-1
+
+  ; we've got the latch (tone, chn 2 or 3) PSG byte both in A and in B
+  ; and we have to check if the value should be passed to PSG or not
   bit 5,a                        ; test if tone it's for channel 2 or 3
   jr z,+                         ; jump if channel 2
   ld (PSGChan3LowTone),a         ; save tone LOW data
   ld a,(PSGChannel3SFX)          ; channel 3 free?
   or a
-  jr z,_send2PSG
+  jr z,_send2PSG_B
   jp _intLoop
 +:ld (PSGChan2LowTone),a         ; save tone LOW data
   ld a,(PSGChannel2SFX)          ; channel 2 free?
   or a
-  jr z,_send2PSG
+  jr z,_send2PSG_B
+  jp _intLoop
+  
+_latch_Volume:
+  bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
+  jr nz,_latch_Volume_23         ; volume is for channel 2 or 3
+  bit 5,a                        ; test if volume it's for channel 0 or 1
+  jr z,+                         ; jump for channel 0
+  ld (PSGChan1Volume),a          ; save volume data
+  jp _sendVolume2PSG_A
++:ld (PSGChan0Volume),a          ; save volume data
+  jp _sendVolume2PSG_A
+
+_latch_Volume_23:
+  bit 5,a                        ; test if volume it's for channel 2 or 3
+  jr z,+                         ; jump for channel 2
+  ld (PSGChan3Volume),a          ; save volume data
+  ld a,(PSGChannel3SFX)          ; channel 3 free?
+  or a
+  jr z,_sendVolume2PSG_B
+  jp _intLoop
++:ld (PSGChan2Volume),a          ; save volume data
+  ld a,(PSGChannel2SFX)          ; channel 2 free?
+  or a
+  jr z,_sendVolume2PSG_B
   jp _intLoop
   
 _skipFrame:
@@ -314,33 +385,39 @@ _otherCommands:
 
   ret
 
-_send2PSG:
+_send2PSG_B:
   ld a,b
 _send2PSG_A:
+  out (PSGDataPort),a              ; output the byte
+  jp _intLoop
+
+_sendVolume2PSG_B:
+  ld a,b
+_sendVolume2PSG_A:
+  ld c,a                           ; save the PSG command byte
+  and $0F                          ; keep lower nibble
+  ld b,a                           ; save value
+  ld a,(PSGMusicVolumeAttenuation) ; load volume attenuation
+  add a,b                          ; add value
+  cp $0F                           ; check overflow
+  jr c,_no_overflow                ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
+_no_overflow:
+  ld b,a                           ; save new attenuated volume value
+  ld a,c                           ; retrieve PSG command
+  and $F0                          ; keep upper nibble
+  or b                             ; set attenuated volume
   out (PSGDataPort),a              ; output the byte
   jp _intLoop
 
 _output_NoLatch:
   ; we got the last latch in A and the PSG data in B
   ; and we have to check if the value should pass to PSG or not
-  bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
-  jr z,_send2PSG                 ;    if it's for chn 0 or 1 then we've done!
-  bit 4,a                        ; test if it's a volume
-  jr z,_high_part_Tone           ; jump if tone data (it's the high part)
-  bit 5,a                        ; test if volume it's for channel 2 or 3
-  jr z,+
-  ld a,b                         ; restore data in A
-  ld (PSGChan3Volume),a          ; save volume data
-  ld a,(PSGChannel3SFX)          ; channel 3 free?
-  or a
-  jr z,_send2PSG
-  jp _intLoop
-+:ld a,b                         ; restore data in A
-  ld (PSGChan2Volume),a          ; save volume data
-  ld a,(PSGChannel2SFX)          ; channel 2 free?
-  or a
-  jr z,_send2PSG
-  jp _intLoop
+  ; note that non-latch commands can be only contain frequencies (no volumes)
+  ; for channels 0,1,2 only (no noise)
+  bit 6,a                        ; test if the latch it's for channels 0-1 or for chn 2
+  jr nz,_high_part_Tone          ;  it's tone data for channel 2
+  jp _send2PSG_B                 ; otherwise, it's for chn 0 or 1 so we've done!
 
 _setLoopPoint:
   ld (PSGMusicLoopPoint),hl
@@ -368,21 +445,12 @@ _substring:
 _high_part_Tone:
   ; we got the last latch in A and the PSG data in B
   ; and we have to check if the value should pass to PSG or not
-  bit 5,a                        ; test if tone it's for channel 2 or 3
-  jr z,+                         ; jump if channel 2
-  ld a,b                         ; PSG data in A
-  and $07                        ; keep last 3 bits of PSG data only
-  or PSGLatch|PSGChannel3        ; set it to latch for channel 3
-  ld (PSGChan3LowTone),a         ; save channel 3 tone LOW data (latched)
-  ld a,(PSGChannel3SFX)          ; channel 3 free?
+  ; PSG data can only be for channel 2, here
+  ld a,b                              ; move PSG data in A
+  ld (PSGChan2HighTone),a             ; save channel 2 tone HIGH data
+  ld a,(PSGChannel2SFX)               ; channel 2 free?
   or a
-  jr z,_send2PSG
-  jp _intLoop
-+:ld a,b                         ; PSG data in A
-  ld (PSGChan2HighTone),a        ; save channel 2 tone HIGH data
-  ld a,(PSGChannel2SFX)          ; channel 2 free?
-  or a
-  jr z,_send2PSG
+  jr z,_send2PSG_B
   jp _intLoop
 .ends
 
@@ -462,7 +530,7 @@ _sfxLoop:
   jp _intLoop
 
 _substring:
-  sub (PSGSubString-4)                ; len is value - $08 + 4
+  sub PSGSubString-4                  ; len is value - $08 + 4
   ld (PSGSFXSubstringLen),a           ; save len
   ld c,(hl)                           ; load substring address (offset)
   inc hl
@@ -488,14 +556,18 @@ _substring:
   PSGMusicSubstringLen       db    ; lenght of the substring we are playing
   PSGMusicSubstringRetAddr   dw    ; return to this address when substring is over
 
-  ; ******* SFX *************
-
-  ; command buffering for channels 2-3
+  ; command buffers
+  PSGChan0Volume             db       ; the volume for channel 0
+  PSGChan1Volume             db       ; the volume for channel 1
   PSGChan2Volume             db       ; the volume for channel 2
   PSGChan3Volume             db       ; the volume for channel 3
   PSGChan2LowTone            db       ; the low tone bits for channels 2
   PSGChan3LowTone            db       ; the low tone bits for channels 3
   PSGChan2HighTone           db       ; the high tone bits for channel 2
+  
+  PSGMusicVolumeAttenuation  db       ; the volume attenuation applied to the tune (0-15)
+
+  ; ******* SFX *************
 
   ; flags for channels 2-3 access
   PSGChannel2SFX             db       ; !0 means channel 2 is allocated to SFX
