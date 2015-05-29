@@ -152,7 +152,7 @@ PSGSetMusicVolumeAttenuation:
   out (PSGDataPort),a              ; output the byte
 
 _restore_channel3:
-  ld a,(PSGChannel3SFX)            ; channel 2 busy with SFX?
+  ld a,(PSGChannel3SFX)            ; channel 3 busy with SFX?
   or a
   ret nz                           ; if so, we're done
 
@@ -221,7 +221,7 @@ PSGSFXStop:
   jr z,_skipRestore              ; if it's not playing, skip restoring PSG values
   ld a,(PSGChannel2SFX)          ; channel 2 playing?
   or a
-  jr z,+
+  jr z,_skip_chn2
   ld a,(PSGChan2LowTone)
   and $0F                        ; use only low 4 bits of byte
   or PSGLatch|PSGChannel2        ; latch channel 2, low part of tone
@@ -231,20 +231,38 @@ PSGSFXStop:
   out (PSGDataPort),a
   ld a,(PSGChan2Volume)          ; restore music' channel 2 volume
   and $0F                        ; use only low 4 bits of byte
-  or PSGLatch|PSGChannel2|PSGVolumeData
-  out (PSGDataPort),a
-+:ld a,(PSGChannel3SFX)          ; channel 3 playing?
+  push bc
+    ld b,a                            ; save it temporary
+    ld a,(PSGMusicVolumeAttenuation)  ;
+    add a,b
+    cp $0F                            ; check overflow
+    jr c,+                            ; if it's <=15 then ok
+    ld a,$0F                          ; else, reset to 15
++:  or PSGLatch|PSGChannel2|PSGVolumeData
+    out (PSGDataPort),a              ; output the byte
+  pop bc
+_skip_chn2:
+  ld a,(PSGChannel3SFX)          ; channel 3 playing?
   or a
-  jr z,+
+  jr z,_skip_chn3
   ld a,(PSGChan3LowTone)
   and $07                        ; use only low 3 bits of byte
   or PSGLatch|PSGChannel3        ; latch channel 3, low part of tone (no high part)
   out (PSGDataPort),a
   ld a,(PSGChan3Volume)          ; restore music' channel 3 volume
   and $0F                        ; use only low 4 bits of byte
-  or PSGLatch|PSGChannel3|PSGVolumeData
-  out (PSGDataPort),a
-+:xor a                          ; ld a,PSG_STOPPED
+  push bc
+    ld b,a                            ; save it temporary
+    ld a,(PSGMusicVolumeAttenuation)  ;
+    add a,b
+    cp $0F                            ; check overflow
+    jr c,+                            ; if it's <=15 then ok
+    ld a,$0F                          ; else, reset to 15
++:  or PSGLatch|PSGChannel3|PSGVolumeData
+    out (PSGDataPort),a              ; output the byte
+  pop bc
+_skip_chn3:
+  xor a                          ; ld a,PSG_STOPPED
 _skipRestore:
   ld (PSGChannel2SFX),a
   ld (PSGChannel3SFX),a
