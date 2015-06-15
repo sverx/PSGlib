@@ -7,11 +7,13 @@
 
 #define     VGM_OLD_HEADERSIZE      64        // 'old' VGM header
 #define     VGM_HEADER_LOOPPOINT    0x1C
+#define     VGM_HEADER_FRAMERATE    0x24
 #define     VGM_DATA_OFFSET         0x34
 
 #define     VGM_GGSTEREO    0x4F
 #define     VGM_PSGFOLLOWS  0x50
-#define     VGM_FRAMESKIP   0x62
+#define     VGM_FRAMESKIP_NTSC   0x62
+#define     VGM_FRAMESKIP_PAL    0x63
 #define     VGM_SAMPLESKIP  0x61
 #define     VGM_ENDOFDATA   0x66
 
@@ -177,7 +179,8 @@ int main (int argc, char *argv[]) {
   int ss,fs;
   int latched_chn=0;
   int first_byte=TRUE;
-  unsigned int file_signature;
+  unsigned int file_signature,frame_rate;
+  int sample_divider=735;                            // NTSC (default)
   
   printf ("*** Sverx's VGM to PSG converter ***\n");
   
@@ -222,13 +225,19 @@ int main (int argc, char *argv[]) {
     printf("Fatal: input VGM file doesn't seem a valid *uncompressed* VGM file\n");
     return(1);
   }
-
-  fOUT=fopen(argv[2],"wb");
-  if (!fOUT) {
-    printf("Fatal: can't write to output PSG file\n");
-    return(1);
+  
+  fseek(fIN,VGM_HEADER_FRAMERATE,SEEK_SET);  // seek to FRAMERATE in the VGM header
+  fread (&frame_rate, 4, 1, fIN);            // read frame_rate
+    
+  if (frame_rate==60) {
+    printf ("Info: NTSC (60Hz) VGM detected\n");	
+  } else if (frame_rate==50) {
+    printf ("Info: PAL (50Hz) VGM detected\n");
+    sample_divider=882;                           // PAL!
+  } else {
+    printf ("Warning: unknown frame rate, assuming NTSC (60Hz)\n");	
   }
-
+  
   fseek(fIN,VGM_HEADER_LOOPPOINT,SEEK_SET);  // seek to LOOPPOINT in the VGM header
   fread (&loop_offset, 4, 1, fIN);           // read loop_offset
   
@@ -250,7 +259,13 @@ int main (int argc, char *argv[]) {
     printf ("Info: no loop point defined\n");
     loop_offset=-1; // make it negative so that won't happen
   }
-    
+  
+  fOUT=fopen(argv[2],"wb");
+  if (!fOUT) {
+    printf("Fatal: can't write to output PSG file\n");
+    return(1);
+  }
+
   while ((!leave) && (!feof(fIN))) {
   
     c=fgetc(fIN);
@@ -294,18 +309,20 @@ int main (int argc, char *argv[]) {
         if (checkLoopOffset()) writeLoopMarker();
         break;
         
-      case VGM_FRAMESKIP:          // frame skip, now count how many
-      
+      case VGM_FRAMESKIP_NTSC:
+      case VGM_FRAMESKIP_PAL:
+   
+        // frame skip, now count how many
         found_pause();
       
         fs=1;
         do {
           c=fgetc(fIN);
-          if (c==VGM_FRAMESKIP) fs++;
+          if ((c==VGM_FRAMESKIP_NTSC) || (c==VGM_FRAMESKIP_PAL)) fs++;
           decLoopOffset(1);
-        } while ((fs<MAX_WAIT) && (c==VGM_FRAMESKIP) && (!checkLoopOffset()));
+        } while ((fs<MAX_WAIT) && ((c==VGM_FRAMESKIP_NTSC) || (c==VGM_FRAMESKIP_PAL)) && (!checkLoopOffset()));
         
-        if (c!=VGM_FRAMESKIP) {
+        if ((c!=VGM_FRAMESKIP_NTSC) && (c!=VGM_FRAMESKIP_PAL)) {
           ungetc(c,fIN);
           incLoopOffset();
         }
@@ -325,10 +342,10 @@ int main (int argc, char *argv[]) {
         ss=c;
         c=fgetc(fIN);
         ss+=c*256;
-        fs=ss/0x2df;                   // samples to NTSC frames
-        if ((ss%0x2df)!=0) {
+        fs=ss/sample_divider;                           // samples to frames
+        if ((ss%sample_divider)!=0) {
           printf("Warning: pause length isn't perfectly frame sync'd\n");
-          if ((ss%0x2df)>(0x2df/2))   // round to closest int
+          if ((ss%sample_divider)>(sample_divider/2))   // round to closest int
             fs++;
         }
 
