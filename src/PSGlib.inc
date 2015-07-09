@@ -26,6 +26,9 @@
 .define      SFX_CHANNEL3        $02
 .define      SFX_CHANNELS2AND3   SFX_CHANNEL2|SFX_CHANNEL3
 
+.define      PSG_CHANNEL3_FREQ3  0
+.define      PSG_CHANNEL3_FREQ2  1
+
 .section "PSGInit" free
 ; ************************************************************************************
 ; initializes the PSG 'engine'
@@ -43,11 +46,14 @@ PSGInit:
 .section "PSGPlay and PSGPlayNoRepeat" free
 ; ************************************************************************************
 ; receives in HL the address of the PSG to start playing
+; receives in C a flag indicating whether the tune uses the frequency of channel 2 for channel 3
 ; destroys AF
 PSGPlayNoRepeat:
   xor a                           ; We don't want the song to loop
   jp +
 PSGPlay:
+  ld a,c
+  ld (PSGChannel3Freq2),a
   ld a,$1                         ; the song can loop when finished
 +:ld (PSGLoopFlag),a
   call PSGStop                    ; if there's a tune already playing, we should stop it!
@@ -195,6 +201,13 @@ PSGSFXPlay:
   ld a,PSG_PLAYING
   ld (PSGChannel3SFX),a
 +:ld (PSGSFXStatus),a           ; set status to PSG_PLAYING
+  ld a,(PSGChannel3Freq2)       ; does channel 3 use the frequency of channel 2?
+  or a
+  ret z                         ; it doesn't so we're done
+  ld a,$ff
+  out (PSGDataPort),a           ; silence channel 3
+  ld a,PSG_PLAYING
+  ld (PSGChannel3SFX),a         ; occupy channel 3
   ret
 .ends
 
@@ -590,6 +603,7 @@ _substring:
   ; flags for channels 2-3 access
   PSGChannel2SFX             db       ; !0 means channel 2 is allocated to SFX
   PSGChannel3SFX             db       ; !0 means channel 3 is allocated to SFX
+  PSGChannel3Freq2           db       ; !0 means channel 3 uses frequency of channel 2
 
   ; fundamental vars for SFX
   PSGSFXStatus               db       ; are we playing a SFX?

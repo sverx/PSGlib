@@ -121,6 +121,7 @@ main:
 
   ; ******************** start the tune ********************
   ld hl,theMusic
+  ld c,PSG_CHANNEL3_FREQ3       ; use PSG_CHANNEL3_FREQ2 here if your tune uses the frequency of channel 2 for channel 3
   call PSGPlay
 
   ld d,$00
