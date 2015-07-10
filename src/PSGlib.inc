@@ -195,6 +195,14 @@ PSGSFXPlay:
   ld a,PSG_PLAYING
   ld (PSGChannel3SFX),a
 +:ld (PSGSFXStatus),a           ; set status to PSG_PLAYING
+  ld a,(PSGChan3LowTone)        ; test if channel 3 uses the frequency of channel 2
+  and 3
+  cp 3
+  ret nz                        ; if channel 3 doesn't use the frequency of channel 2 we're done
+  ld a,PSG_PLAYING
+  ld (PSGChannel3SFX),a         ; otherwise occupy channel 3
+  ld a,$ff
+  out (PSGDataPort),a           ; and silence channel 3
   ret
 .ends
 
@@ -299,7 +307,7 @@ PSGFrame:
 
   ld a,(PSGMusicSkipFrames)      ; check if we've got to skip frames
   or a
-  jr nz,_skipFrame
+  jp nz,_skipFrame
   
   ld hl,(PSGMusicPointer)        ; read current address
 
@@ -325,7 +333,7 @@ _continue:
   bit 4,a                        ; test if it's a volume
   jr nz,_latch_Volume            ; jump if volume data
   bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
-  jr z,_send2PSG_A               ; send data to PSG if it's for channels 0-1
+  jp z,_send2PSG_A               ; send data to PSG if it's for channels 0-1
 
   ; we've got the latch (tone, chn 2 or 3) PSG byte both in A and in B
   ; and we have to check if the value should be passed to PSG or not
@@ -334,7 +342,17 @@ _continue:
   ld (PSGChan3LowTone),a         ; save tone LOW data
   ld a,(PSGChannel3SFX)          ; channel 3 free?
   or a
-  jr z,_send2PSG_B
+  jp nz,_intLoop
+  ld a,(PSGChan3LowTone)
+  and 3                          ; test if channel 3 is set to use the frequency of channel 2
+  cp 3
+  jr nz,_send2PSG_B              ; if channel 3 doesn't use frequency of channel 2 jump
+  ld a,(PSGSFXStatus)            ; test if an SFX is playing
+  or a
+  jr z,_send2PSG_B               ; if no SFX is playing jump
+  ld (PSGChannel3SFX),a          ; otherwise occupy channel 3
+  ld a,$ff
+  out (PSGDataPort),a            ; and silence channel 3
   jp _intLoop
 +:ld (PSGChan2LowTone),a         ; save tone LOW data
   ld a,(PSGChannel2SFX)          ; channel 2 free?
