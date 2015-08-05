@@ -200,9 +200,9 @@ PSGSFXPlay:
   cp 3
   ret nz                        ; if channel 3 doesn't use the frequency of channel 2 we're done
   ld a,PSG_PLAYING
-  ld (PSGChannel3SFX),a         ; otherwise occupy channel 3
-  ld a,$ff
-  out (PSGDataPort),a           ; and silence channel 3
+  ld (PSGChannel3SFX),a         ; otherwise mark channel 3 as occupied by the SFX
+  ld a,PSGLatch|PSGChannel3|PSGVolumeData|$0F   ; and silence channel 3
+  out (PSGDataPort),a
   ret
 .ends
 
@@ -350,9 +350,9 @@ _continue:
   ld a,(PSGSFXStatus)            ; test if an SFX is playing
   or a
   jr z,_send2PSG_B               ; if no SFX is playing jump
-  ld (PSGChannel3SFX),a          ; otherwise occupy channel 3
-  ld a,$ff
-  out (PSGDataPort),a            ; and silence channel 3
+  ld (PSGChannel3SFX),a          ; otherwise mark channel 3 as occupied
+  ld a,PSGLatch|PSGChannel3|PSGVolumeData|$0F   ; and silence channel 3
+  out (PSGDataPort),a
   jp _intLoop
 +:ld (PSGChan2LowTone),a         ; save tone LOW data
   ld a,(PSGChannel2SFX)          ; channel 2 free?
