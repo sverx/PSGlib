@@ -3,6 +3,10 @@
 ; https://github.com/sverx/PSGlib
 ;==============================================================
 
+; NOTE: this uses a WLA-DX 'ramsection' at slot 3
+;       If you want to change or remove that,
+;       see the note at end of file
+
 .define      PSG_STOPPED         0
 .define      PSG_PLAYING         1
 
@@ -578,7 +582,15 @@ _substring:
   jp _intLoop
 .ends
 
+; NOTE: if you don't want to use a ramsection,
+;       comment the ".ramsection" line and
+;       uncomment the next ".enum" one,
+;       setting .enum start RAM address
+;       according to your needs.
+;       Also change ".ends" into ".ende" at end of this file
+
 .ramsection "PSGlib variables" slot 3
+;.enum $c000 export                ; PSGlib variables location in RAM
   ; fundamental vars
   PSGMusicStatus             db    ; are we playing a background music?
   PSGMusicStart              dw    ; the pointer to the beginning of music
@@ -621,3 +633,4 @@ _substring:
   PSGSFXSubstringLen         db       ; lenght of the substring we are playing
   PSGSFXSubstringRetAddr     dw       ; return to this address when substring is over
 .ends
+;.ende                    ; in case you want to use .enum instead of .ramsection
