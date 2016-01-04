@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <zlib.h>
 #include <string.h>
 
 #define     FALSE                   0
@@ -27,7 +28,7 @@
 
 unsigned int loop_offset;
 unsigned int data_offset;
-FILE *fIN;
+gzFile fIN;
 FILE *fOUT;
 
 unsigned char volume[CHANNELS]={0x0F,0x0F,0x0F,0x0F};  // starting volume = silence
@@ -214,20 +215,20 @@ int main (int argc, char *argv[]) {
   
   init_frame(TRUE);
   
-  fIN=fopen(argv[1],"rb");
+  fIN=gzopen(argv[1],"rb");
   if (!fIN) {
     printf("Fatal: can't open input VGM file\n");
     return(1);
   }
   
-  fread (&file_signature, 4, 1, fIN);
+  gzread (fIN,&file_signature, 4);
   if (file_signature!=0x206d6756) {    // check for 'Vgm ' file signature
-    printf("Fatal: input VGM file doesn't seem a valid *uncompressed* VGM file\n");
+    printf("Fatal: input VGM file doesn't seem a valid VGM file\n");
     return(1);
   }
   
-  fseek(fIN,VGM_HEADER_FRAMERATE,SEEK_SET);  // seek to FRAMERATE in the VGM header
-  fread (&frame_rate, 4, 1, fIN);            // read frame_rate
+  gzseek(fIN,VGM_HEADER_FRAMERATE,SEEK_SET);  // seek to FRAMERATE in the VGM header
+  gzread (fIN,&frame_rate, 4);                // read frame_rate
     
   if (frame_rate==60) {
     printf ("Info: NTSC (60Hz) VGM detected\n");	
@@ -238,17 +239,17 @@ int main (int argc, char *argv[]) {
     printf ("Warning: unknown frame rate, assuming NTSC (60Hz)\n");	
   }
   
-  fseek(fIN,VGM_HEADER_LOOPPOINT,SEEK_SET);  // seek to LOOPPOINT in the VGM header
-  fread (&loop_offset, 4, 1, fIN);           // read loop_offset
+  gzseek(fIN,VGM_HEADER_LOOPPOINT,SEEK_SET);  // seek to LOOPPOINT in the VGM header
+  gzread (fIN,&loop_offset, 4);               // read loop_offset
   
-  fseek(fIN,VGM_DATA_OFFSET,SEEK_SET);       // seek to DATAOFFSET in the VGM header
-  fread (&data_offset, 4, 1, fIN);           // read data_offset
+  gzseek(fIN,VGM_DATA_OFFSET,SEEK_SET);       // seek to DATAOFFSET in the VGM header
+  gzread (fIN,&data_offset, 4);               // read data_offset
   
   if (data_offset) {
-    fseek(fIN,VGM_DATA_OFFSET+data_offset,SEEK_SET);  // skip VGM header
+    gzseek(fIN,VGM_DATA_OFFSET+data_offset,SEEK_SET);  // skip VGM header
     data_offset=VGM_DATA_OFFSET+data_offset;
   } else {
-    fseek(fIN,VGM_OLD_HEADERSIZE,SEEK_SET);           // skip 'old' VGM header
+    gzseek(fIN,VGM_OLD_HEADERSIZE,SEEK_SET);           // skip 'old' VGM header
     data_offset=VGM_OLD_HEADERSIZE;
   }
   
@@ -265,10 +266,9 @@ int main (int argc, char *argv[]) {
     printf("Fatal: can't write to output PSG file\n");
     return(1);
   }
-
-  while ((!leave) && (!feof(fIN))) {
   
-    c=fgetc(fIN);
+  while ((!leave) && (!gzeof(fIN))) {
+    c=gzgetc(fIN);
     decLoopOffset(1);
     if (checkLoopOffset()) writeLoopMarker();
     
@@ -276,7 +276,7 @@ int main (int argc, char *argv[]) {
     
       case VGM_GGSTEREO:            // stereo data byte follows
         // BETA: this is simply DISCARDED atm
-        c=fgetc(fIN);
+        c=gzgetc(fIN);
         printf("Warning: GameGear stereo info discarded\n");
         decLoopOffset(1);
         if (checkLoopOffset()) writeLoopMarker();
@@ -284,7 +284,7 @@ int main (int argc, char *argv[]) {
      
       case VGM_PSGFOLLOWS:          // PSG byte follows
       
-        c=fgetc(fIN);
+        c=gzgetc(fIN);
         
         if (c&0x80) {
           lastlatch=c;               // latch value
@@ -317,13 +317,13 @@ int main (int argc, char *argv[]) {
       
         fs=1;
         do {
-          c=fgetc(fIN);
+          c=gzgetc(fIN);
           if ((c==VGM_FRAMESKIP_NTSC) || (c==VGM_FRAMESKIP_PAL)) fs++;
           decLoopOffset(1);
         } while ((fs<MAX_WAIT) && ((c==VGM_FRAMESKIP_NTSC) || (c==VGM_FRAMESKIP_PAL)) && (!checkLoopOffset()));
         
         if ((c!=VGM_FRAMESKIP_NTSC) && (c!=VGM_FRAMESKIP_PAL)) {
-          ungetc(c,fIN);
+          gzungetc(c,fIN);
           incLoopOffset();
         }
         
@@ -338,9 +338,9 @@ int main (int argc, char *argv[]) {
       
         found_pause();
       
-        c=fgetc(fIN);
+        c=gzgetc(fIN);
         ss=c;
-        c=fgetc(fIN);
+        c=gzgetc(fIN);
         ss+=c*256;
         fs=ss/sample_divider;                           // samples to frames
         if ((ss%sample_divider)!=0) {
@@ -376,7 +376,7 @@ int main (int argc, char *argv[]) {
 
   }
   
-  fclose (fIN);
+  gzclose (fIN);
   fclose (fOUT);
   
   if (!fatal) {
