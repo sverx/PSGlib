@@ -223,7 +223,7 @@ int main (int argc, char *argv[]) {
   
   gzread (fIN,&file_signature, 4);
   if (file_signature!=0x206d6756) {    // check for 'Vgm ' file signature
-    printf("Fatal: input VGM file doesn't seem a valid VGM file\n");
+    printf("Fatal: input file doesn't seem a valid VGM/VGZ file\n");
     return(1);
   }
   
