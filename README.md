@@ -26,3 +26,7 @@ Typical workflow:
  * Tunes can be set to run just once instead of endlessly using PSGPlayNoRepeat call, or set a playing tune to have no more loops using PSGCancelLoop call at any time.
  
  * To check if a tune is still playing use PSGGetStatus call, to check if a SFX is still playing use PSGSFXGetStatus call.
+ 
++) You can set the music 'master' volume using PSGSetMusicVolumeAttenuation, even when a tune it's playing (and this won't affect SFX volumes).
+ 
++) If you need to temporary suspend audio, use PSGSilenceChannels and stop calling PSGFrame and PSGSFXFrame. When ready to resume, use PSGRestoreVolumes.

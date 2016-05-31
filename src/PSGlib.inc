@@ -1,11 +1,11 @@
-;==============================================================
-; PSGlib library - by sverx
-; https://github.com/sverx/PSGlib
-;==============================================================
+;================================================================
+; PSGlib - Programmable Sound Generator audio library - by sverx
+;          https://github.com/sverx/PSGlib
+;================================================================
 
 ; NOTE: this uses a WLA-DX 'ramsection' at slot 3
 ;       If you want to change or remove that,
-;       see the note at end of file
+;       see the note at the end of this file
 
 .define      PSG_STOPPED         0
 .define      PSG_PLAYING         1
@@ -172,6 +172,81 @@ _restore_channel3:
   ret
 .ends
 
+.section "PSGSilenceChannels" free
+; ************************************************************************************
+; sets all PSG channels to volume ZERO (useful if you need to pause music)
+; destroys AF
+PSGSilenceChannels:
+  ld a,PSGLatch|PSGChannel0|PSGVolumeData|$0F   ; latch channel 0, volume=0xF (silent)
+  out (PSGDataPort),a
+  ld a,PSGLatch|PSGChannel1|PSGVolumeData|$0F   ; latch channel 1, volume=0xF (silent)
+  out (PSGDataPort),a
+  ld a,PSGLatch|PSGChannel2|PSGVolumeData|$0F   ; latch channel 2, volume=0xF (silent)
+  out (PSGDataPort),a
+  ld a,PSGLatch|PSGChannel3|PSGVolumeData|$0F   ; latch channel 3, volume=0xF (silent)
+  out (PSGDataPort),a
+  ret
+.ends
+
+.section "PSGRestoreVolumes" free
+; ************************************************************************************
+; resets all PSG channels to previous volume
+; destroys AF,HL
+PSGRestoreVolumes:
+  ld hl,PSGMusicVolumeAttenuation
+  ld a,(PSGChan0Volume)
+  and $0F
+  add a,(hl)
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel0|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+
+  ld a,(PSGChan1Volume)
+  and $0F
+  add a,(hl)
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel1|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+  
+  ld a,(PSGChannel2SFX)            ; channel 2 busy with SFX?
+  jr nz,_restoreSFX2
+  ld a,(PSGChan2Volume)
+  and $0F
+  add a,(hl)
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
+  jr c,+
+
+_restoreSFX2:
+  ld a,(PSGSFXChan2Volume)
+  and $0F
++:or PSGLatch|PSGChannel2|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+  
+  ld a,(PSGChannel3SFX)            ; channel 3 busy with SFX?
+  jr nz,_restoreSFX3
+  ld a,(PSGChan3Volume)
+  and $0F
+  add a,(hl)
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
+  jr c,+
+
+_restoreSFX3:
+  ld a,(PSGSFXChan3Volume)
+  and $0F
++:or PSGLatch|PSGChannel3|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+
+  ret
+.ends
+
 .section "PSGSFXPlay and PSGSFXPlayLoop" free
 ; ************************************************************************************
 ; receives in HL the address of the SFX PSG to start
@@ -305,11 +380,11 @@ PSGSFXGetStatus:
 ; processes a music frame
 ; destroys AF,HL,BC
 PSGFrame:
-  ld a,(PSGMusicStatus)          ; check if we've got to play a tune
+  ld a,(PSGMusicStatus)          ; check if we have got to play a tune
   or a
   ret z
 
-  ld a,(PSGMusicSkipFrames)      ; check if we've got to skip frames
+  ld a,(PSGMusicSkipFrames)      ; check if we havve got to skip frames
   or a
   jp nz,_skipFrame
   
@@ -320,7 +395,7 @@ _intLoop:
   inc hl                         ; point to next byte
   ld a,(PSGMusicSubstringLen)    ; read substring len
   or a
-  jr z,_continue                 ; check if it's 0 (we're not in a substring)
+  jr z,_continue                 ; check if it is 0 (we are not in a substring)
   dec a                          ; decrease len
   ld (PSGMusicSubstringLen),a    ; save len
   jr nz,_continue
@@ -329,20 +404,20 @@ _intLoop:
 _continue:
   ld a,b                         ; copy PSG byte into A
   cp PSGLatch                    ; is it a latch?
-  jr c,_noLatch                  ; if < $80 then it's NOT a latch
-  ld (PSGMusicLastLatch),a       ; it's a latch - save it in 'LastLatch'
+  jr c,_noLatch                  ; if < $80 then it is NOT a latch
+  ld (PSGMusicLastLatch),a       ; it is a latch - save it in "LastLatch"
   
-  ; we've got the latch PSG byte both in A and in B
+  ; we have got the latch PSG byte both in A and in B
   ; and we have to check if the value should pass to PSG or not
-  bit 4,a                        ; test if it's a volume
+  bit 4,a                        ; test if it is a volume
   jr nz,_latch_Volume            ; jump if volume data
-  bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
-  jp z,_send2PSG_A               ; send data to PSG if it's for channels 0-1
+  bit 6,a                        ; test if the latch it is for channels 0-1 or for 2-3
+  jp z,_send2PSG_A               ; send data to PSG if it is for channels 0-1
 
-  ; we've got the latch (tone, chn 2 or 3) PSG byte both in A and in B
+  ; we have got the latch (tone, chn 2 or 3) PSG byte both in A and in B
   ; and we have to check if the value should be passed to PSG or not
-  bit 5,a                        ; test if tone it's for channel 2 or 3
-  jr z,+                         ; jump if channel 2
+  bit 5,a                        ; test if tone it is for channel 2 or 3
+  jr z,_ifchn2                   ; jump if channel 2
   ld (PSGChan3LowTone),a         ; save tone LOW data
   ld a,(PSGChannel3SFX)          ; channel 3 free?
   or a
@@ -350,7 +425,7 @@ _continue:
   ld a,(PSGChan3LowTone)
   and 3                          ; test if channel 3 is set to use the frequency of channel 2
   cp 3
-  jr nz,_send2PSG_B              ; if channel 3 doesn't use frequency of channel 2 jump
+  jr nz,_send2PSG_B              ; if channel 3 does not use frequency of channel 2 jump
   ld a,(PSGSFXStatus)            ; test if an SFX is playing
   or a
   jr z,_send2PSG_B               ; if no SFX is playing jump
@@ -358,31 +433,34 @@ _continue:
   ld a,PSGLatch|PSGChannel3|PSGVolumeData|$0F   ; and silence channel 3
   out (PSGDataPort),a
   jp _intLoop
-+:ld (PSGChan2LowTone),a         ; save tone LOW data
+_ifchn2:
+  ld (PSGChan2LowTone),a         ; save tone LOW data
   ld a,(PSGChannel2SFX)          ; channel 2 free?
   or a
   jr z,_send2PSG_B
   jp _intLoop
   
 _latch_Volume:
-  bit 6,a                        ; test if the latch it's for channels 0-1 or for 2-3
+  bit 6,a                        ; test if the latch it is for channels 0-1 or for 2-3
   jr nz,_latch_Volume_23         ; volume is for channel 2 or 3
-  bit 5,a                        ; test if volume it's for channel 0 or 1
-  jr z,+                         ; jump for channel 0
+  bit 5,a                        ; test if volume it is for channel 0 or 1
+  jr z,_ifchn0                   ; jump for channel 0
   ld (PSGChan1Volume),a          ; save volume data
   jp _sendVolume2PSG_A
-+:ld (PSGChan0Volume),a          ; save volume data
+_ifchn0:
+  ld (PSGChan0Volume),a          ; save volume data
   jp _sendVolume2PSG_A
 
 _latch_Volume_23:
-  bit 5,a                        ; test if volume it's for channel 2 or 3
-  jr z,+                         ; jump for channel 2
+  bit 5,a                        ; test if volume it is for channel 2 or 3
+  jr z,_chn2                     ; jump for channel 2
   ld (PSGChan3Volume),a          ; save volume data
   ld a,(PSGChannel3SFX)          ; channel 3 free?
   or a
   jr z,_sendVolume2PSG_B
   jp _intLoop
-+:ld (PSGChan2Volume),a          ; save volume data
+_chn2:
+  ld (PSGChan2Volume),a          ; save volume data
   ld a,(PSGChannel2SFX)          ; channel 2 free?
   or a
   jr z,_sendVolume2PSG_B
@@ -395,7 +473,7 @@ _skipFrame:
 
 _noLatch:
   cp PSGData
-  jr c,_command                  ; if < $40 then it's a command
+  jr c,_command                  ; if < $40 then it is a command
   ; it's a data
   ld a,(PSGMusicLastLatch)       ; retrieve last latch
   jp _output_NoLatch
@@ -440,7 +518,7 @@ _sendVolume2PSG_A:
   ld a,(PSGMusicVolumeAttenuation) ; load volume attenuation
   add a,b                          ; add value
   cp $0F                           ; check overflow
-  jr c,_no_overflow                ; if it's <=15 then ok
+  jr c,_no_overflow                ; if it is <=15 then ok
   ld a,$0F                         ; else, reset to 15
 _no_overflow:
   ld b,a                           ; save new attenuated volume value
@@ -455,9 +533,9 @@ _output_NoLatch:
   ; and we have to check if the value should pass to PSG or not
   ; note that non-latch commands can be only contain frequencies (no volumes)
   ; for channels 0,1,2 only (no noise)
-  bit 6,a                        ; test if the latch it's for channels 0-1 or for chn 2
-  jr nz,_high_part_Tone          ;  it's tone data for channel 2
-  jp _send2PSG_B                 ; otherwise, it's for chn 0 or 1 so we've done!
+  bit 6,a                        ; test if the latch it is for channels 0-1 or for chn 2
+  jr nz,_high_part_Tone          ;  it is tone data for channel 2
+  jp _send2PSG_B                 ; otherwise, it is for chn 0 or 1 so we have done!
 
 _setLoopPoint:
   ld (PSGMusicLoopPoint),hl
@@ -499,56 +577,67 @@ _high_part_Tone:
 ; processes a SFX frame
 ; destroys AF,HL,BC
 PSGSFXFrame:
-  ld a,(PSGSFXStatus)            ; check if we've got to play SFX
+  ld a,(PSGSFXStatus)            ; check if we have got to play SFX
   or a
   ret z
 
-  ld a,(PSGSFXSkipFrames)        ; check if we've got to skip frames
+  ld a,(PSGSFXSkipFrames)        ; check if we have got to skip frames
   or a
-  jp nz,_skipFrame
+  jp nz,_skipSFXFrame
   
   ld hl,(PSGSFXPointer)          ; read current SFX address
 
-_intLoop:
+_intSFXLoop:
   ld b,(hl)                      ; load a byte in B, temporary
   inc hl                         ; point to next byte
   ld a,(PSGSFXSubstringLen)      ; read substring len
-  or a                           ; check if it's 0 (we're not in a substring)
-  jr z,_continue
+  or a                           ; check if it is 0 (we are not in a substring)
+  jr z,_SFXcontinue
   dec a                          ; decrease len
   ld (PSGSFXSubstringLen),a      ; save len
-  jr nz,_continue
+  jr nz,_SFXcontinue
   ld hl,(PSGSFXSubstringRetAddr) ; substring over, retrieve return address
 
-_continue:
+_SFXcontinue:
   ld a,b                         ; restore byte
   cp PSGData
-  jp c,_command                  ; if less than $40 then it's a command
+  jp c,_SFXcommand               ; if less than $40 then it is a command
+  bit 4,a                        ; check if it is a volume byte
+  jr z,_SFXoutbyte               ; if not, output it
+  bit 5,a                        ; check if it is volume for channel 2 or channel 3
+  jr nz,_SFXvolumechn3
+  ld (PSGSFXChan2Volume),a
+  jr _SFXoutbyte
+
+_SFXvolumechn3:
+  ld (PSGSFXChan3Volume),a
+
+_SFXoutbyte:
   out (PSGDataPort),a            ; output the byte
-  jp _intLoop
+  jp _intSFXLoop
   
-_skipFrame:
+_skipSFXFrame:
   dec a
   ld (PSGSFXSkipFrames),a
   ret
 
-_command:
+_SFXcommand:
   cp PSGWait
-  jr z,_done                     ; no additional frames
-  jr c,_otherCommands            ; other commands?
+  jr z,_SFXdone                  ; no additional frames
+  jr c,_SFXotherCommands         ; other commands?
   and $07                        ; take only the last 3 bits for skip frames
   ld (PSGSFXSkipFrames),a        ; we got additional frames to skip
-_done:
+_SFXdone:
   ld (PSGSFXPointer),hl          ; save current address
   ret                            ; frame done
 
-_otherCommands:
+_SFXotherCommands:
   cp PSGSubString
-  jr nc,_substring
+  jr nc,_SFXsubstring
   cp PSGEnd
   jr z,_sfxLoop
   cp PSGLoop
-  jr z,_setLoopPoint
+  jr z,_SFXsetLoopPoint
   
   ; ***************************************************************************
   ; we should never get here!
@@ -557,9 +646,9 @@ _otherCommands:
 
   ret
 
-_setLoopPoint:
+_SFXsetLoopPoint:
   ld (PSGSFXLoopPoint),hl
-  jp _intLoop
+  jp _intSFXLoop
   
 _sfxLoop:
   ld a,(PSGSFXLoopFlag)               ; is it a looping SFX?
@@ -567,9 +656,9 @@ _sfxLoop:
   jp z,PSGSFXStop                     ; No:stop it! (tail call optimization)
   ld hl,(PSGSFXLoopPoint)
   ld (PSGSFXPointer),hl
-  jp _intLoop
+  jp _intSFXLoop
 
-_substring:
+_SFXsubstring:
   sub PSGSubString-4                  ; len is value - $08 + 4
   ld (PSGSFXSubstringLen),a           ; save len
   ld c,(hl)                           ; load substring address (offset)
@@ -579,7 +668,7 @@ _substring:
   ld (PSGSFXSubstringRetAddr),hl    ; save return address
   ld hl,(PSGSFXStart)
   add hl,bc                         ; make substring current
-  jp _intLoop
+  jp _intSFXLoop
 .ends
 
 ; NOTE: if you don't want to use a ramsection,
@@ -612,7 +701,7 @@ _substring:
   PSGChan2LowTone            db       ; the low tone bits for channels 2
   PSGChan3LowTone            db       ; the low tone bits for channels 3
   PSGChan2HighTone           db       ; the high tone bits for channel 2
-  
+
   PSGMusicVolumeAttenuation  db       ; the volume attenuation applied to the tune (0-15)
 
   ; ******* SFX *************
@@ -620,6 +709,10 @@ _substring:
   ; flags for channels 2-3 access
   PSGChannel2SFX             db       ; !0 means channel 2 is allocated to SFX
   PSGChannel3SFX             db       ; !0 means channel 3 is allocated to SFX
+
+  ; command buffers for SFX
+  PSGSFXChan2Volume          db       ; the volume for channel 2
+  PSGSFXChan3Volume          db       ; the volume for channel 3
 
   ; fundamental vars for SFX
   PSGSFXStatus               db       ; are we playing a SFX?
