@@ -35,6 +35,7 @@ unsigned char volume[CHANNELS]={0x0F,0x0F,0x0F,0x0F};  // starting volume = sile
 unsigned short freq[CHANNELS]={0,0,0,0};
 int volume_change[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
 int freq_change[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
+int hi_freq_change[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
 int frame_started=TRUE;
 int pause_started=FALSE;
 int pause_len=0;
@@ -65,6 +66,7 @@ void init_frame(int initial_state) {
         ((initial_state) && (is_sfx) && (active[i]))) {    // or set to TRUE if it's a SFX and the chn is active
       volume_change[i]=initial_state;    
       freq_change[i]=initial_state;
+      hi_freq_change[i]=initial_state;
     }
   }
   frame_started=initial_state;
@@ -72,7 +74,7 @@ void init_frame(int initial_state) {
 
 void add_command (unsigned char c) {
   int chn,typ;
-  if (c&0x80) {           // is a latch
+  if (c&0x80) {           // it's a latch
     chn=(c&0x60)>>5;
     typ=(c&0x10)>>4;
     if (typ==1) {
@@ -82,13 +84,15 @@ void add_command (unsigned char c) {
       freq[chn]=(freq[chn]&0xFFF0)|(c&0x0F);
       freq_change[chn]=TRUE;
     }
-  } else {
+  } else {                // it's a data (not a latch)
     chn=(lastlatch&0x60)>>5;
     typ=(lastlatch&0x10)>>4;	
     if (typ==1) {
       volume[chn]=c&0x0F;
       volume_change[chn]=TRUE;
     } else {
+      if ((c&0x3F)!=(freq[chn]>>4))     // see if we're really changing the high part of the frequence or not
+        hi_freq_change[chn]=TRUE;
       freq[chn]=(freq[chn]&0x000F)|((c&0x3F)<<4);
       freq_change[chn]=TRUE;
     }	
@@ -102,8 +106,10 @@ void dump_frame(void) {
     if (freq_change[i]) {
       c=(freq[i]&0x0F)|(i<<5)|0x80;          // latch channel 0-2 freq
       fputc(c,fOUT);
-      c=(freq[i]>>4)|0x40;                   // make sure DATA bytes have 1 as 6th bit
-      fputc(c,fOUT);
+      if (hi_freq_change[i]) {               // DATA byte needed?
+        c=(freq[i]>>4)|0x40;                 // make sure DATA bytes have 1 as 6th bit
+        fputc(c,fOUT);
+      }
     }
     
     if (volume_change[i]) {
