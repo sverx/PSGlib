@@ -37,9 +37,9 @@ int main (int argc, char *argv[]) {
   printf ("Info: input file size is %d bytes\n",size);
   
   if (size>=4*1024)                             // just for fun
-    printf ("Info: this will take a while...");   
+    printf ("Info: compression started - this will take a while...\n");
   else
-    printf ("Info: compression started...");
+    printf ("Info: compression started.\n");
   
   // start 'consolidating' from beginning of buf[4], to end-4
   for (consolidate=MIN_LEN; consolidate<(size-MIN_LEN); consolidate++) {
@@ -109,16 +109,15 @@ int main (int argc, char *argv[]) {
     }
     
     if (consolidate%100==0)
-      printf (".");      // print a dot every 100 chars consolidated, to show progress
-    
+      printf ("\rProgress: %d%% ...",(consolidate*100)/size);
+
   }
 
   fOUT=fopen(argv[2],"wb");
   fwrite (&buf, 1, size, fOUT); 
   fclose (fOUT);
   
-  printf ("done!\n");
-
+  printf ("\rProgress: Done!         \n");
   printf ("Info: output file size is %d bytes\n",size);
   return(0);
 }
