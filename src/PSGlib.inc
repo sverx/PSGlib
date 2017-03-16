@@ -193,6 +193,10 @@ PSGSilenceChannels:
 ; resets all PSG channels to previous volume
 ; destroys AF,HL
 PSGRestoreVolumes:
+  ld a,(PSGMusicStatus)            ; check if tune is playing
+  or a
+  jr z,_chkchn2                    ; if not, skip chn0 and chn1
+
   ld hl,PSGMusicVolumeAttenuation
   ld a,(PSGChan0Volume)
   and $0F
@@ -212,8 +216,14 @@ PSGRestoreVolumes:
 +:or PSGLatch|PSGChannel1|PSGVolumeData
   out (PSGDataPort),a              ; output the byte
   
+_chkchn2:
   ld a,(PSGChannel2SFX)            ; channel 2 busy with SFX?
   jr nz,_restoreSFX2
+  
+  ld a,(PSGMusicStatus)            ; check if tune is playing
+  or a
+  jr z,_chkchn3                    ; if not, skip chn2
+
   ld a,(PSGChan2Volume)
   and $0F
   add a,(hl)
@@ -227,9 +237,15 @@ _restoreSFX2:
   and $0F
 +:or PSGLatch|PSGChannel2|PSGVolumeData
   out (PSGDataPort),a              ; output the byte
-  
+
+_chkchn3:
   ld a,(PSGChannel3SFX)            ; channel 3 busy with SFX?
   jr nz,_restoreSFX3
+  
+  ld a,(PSGMusicStatus)            ; check if tune is playing
+  or a
+  ret z                            ; if not, we've done
+
   ld a,(PSGChan3Volume)
   and $0F
   add a,(hl)
