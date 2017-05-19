@@ -19,14 +19,16 @@ Typical workflow:
 
 7) Set up a steady interrupt (vertical blanking for instance) so to call PSGFrame and PSGSFXFrame at a constant pace (very important!). The two calls are separated so you can eventually switch banks when done processing background music and need to process SFX.
 
-8) Start/stop tunes when needed using PSGPlay and PSGStop calls, start/stop SFXs when needed using PSGSFXPlay and PSGSFXStop calls.
-   
- * Looping SFXs are supported too: fire them using a PSGSFXPlayLoop call, cancel their loop using a PSGSFXCancelLoop call.
+8) Start and stop (pause) tunes when needed using PSGPlay and PSGStop calls, start and stop SFXs when needed using PSGSFXPlay and PSGSFXStop calls.
+
+ * Stopped (paused) tunes can be unpaused using a PSGResume call.
 
  * Tunes can be set to run just once instead of endlessly using PSGPlayNoRepeat call, or set a playing tune to have no more loops using PSGCancelLoop call at any time.
- 
+
+ * Looping SFXs are supported too: fire them using a PSGSFXPlayLoop call, cancel their loop using a PSGSFXCancelLoop call.
+
  * To check if a tune is still playing use PSGGetStatus call, to check if a SFX is still playing use PSGSFXGetStatus call.
- 
+
 +) You can set the music 'master' volume using PSGSetMusicVolumeAttenuation, even when a tune it's playing (and this won't affect SFX volumes).
- 
-+) If you need to temporary suspend audio, use PSGSilenceChannels and stop calling PSGFrame and PSGSFXFrame. When ready to resume, use PSGRestoreVolumes.
+
++) If you need to completely suspend all the audio, use PSGSilenceChannels and stop calling PSGFrame and PSGSFXFrame. When ready to resume, use PSGRestoreVolumes and start calling PSGFrame and PSGSFXFrame again at a constant pace.
