@@ -95,6 +95,45 @@ PSGStop:
   ret
 .ends
 
+.section "PSGResume" free
+; ************************************************************************************
+; resume a previously stopped music
+; destroys AF
+PSGResume:
+  ld a,(PSGMusicStatus)                         ; if it's already playing, leave
+  or a
+  ret nz
+  ld a,(PSGChan0Volume)                         ; restore channel 0 volume
+  or PSGLatch|PSGChannel0|PSGVolumeData
+  out (PSGDataPort),a
+  ld a,(PSGChan1Volume)                         ; restore channel 1 volume
+  or PSGLatch|PSGChannel1|PSGVolumeData
+  out (PSGDataPort),a
+  ld a,(PSGChannel2SFX)
+  or a
+  jr nz,+
+  ld a,(PSGChan2LowTone)                        ; restore channel 2 frequency
+  or PSGLatch|PSGChannel2
+  out (PSGDataPort),a
+  ld a,(PSGChan2HighTone)
+  out (PSGDataPort),a
+  ld a,(PSGChan2Volume)                         ; restore channel 2 volume
+  or PSGLatch|PSGChannel2|PSGVolumeData
+  out (PSGDataPort),a
++:ld a,(PSGChannel3SFX)
+  or a
+  jr nz,+
+  ld a,(PSGChan3LowTone)                        ; restore channel 3 frequency
+  or PSGLatch|PSGChannel3
+  out (PSGDataPort),a
+  ld a,(PSGChan3Volume)                         ; restore channel 3 volume
+  or PSGLatch|PSGChannel2|PSGVolumeData
+  out (PSGDataPort),a
++:ld a,PSG_PLAYING
+  ld (PSGMusicStatus),a                         ; set status to PSG_PLAYING
+  ret
+.ends
+
 .section "PSGCancelLoop" free
 ; ************************************************************************************
 ; sets the currently looping music to no more loops after the current
