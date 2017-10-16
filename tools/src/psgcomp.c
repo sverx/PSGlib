@@ -16,10 +16,20 @@ unsigned char buf[BUF_SIZE];
 
 int size;
 
+int mem_compare (const char* p1, const char* p2, int max_len) {
+  // compares buffer *p1 and buffer *p2 until they no longer match or if max_len is reached
+  // returns lenght of the match ( 0 to max_len inclusive )
+  int match_len=0;
+  
+  while ((match_len<max_len) && (*p1++==*p2++))
+    match_len++;
+    
+  return (match_len);
+}
 
 int main (int argc, char *argv[]) {
 
-  int testlen, haystack, consolidate;
+  int m_len, haystack, consolidate;
   
   int skip, needle;
   
@@ -48,54 +58,43 @@ int main (int argc, char *argv[]) {
     
     for (skip=0; skip<MAX_LEN; skip++) {
     
-      // try longest 'substrings' first!
-      for (testlen=MAX_LEN; testlen>=MIN_LEN; testlen--) {
-      
-        // is it worth trying?
-        if (max_save<(testlen-3-skip)) {
-    
-          // haystack is from buf[0]
-          for (haystack=0; haystack<=(consolidate+skip-testlen); haystack++) {   // less or equal, not only less than
-        
-            needle=consolidate+skip;
-      
-            if ((needle+testlen<size) &&
-                (memcmp(&buf[needle],&buf[haystack],testlen)==0)) {
-            
-              // we've found a correspondance!
-              if ((testlen-3-skip)>max_save) {
-              
-                // check if it's the first one OR
-                // if it's not and saves more ONLY 'sacrificing' something previously found
-                if ((max_save==0) || 
-                   (needle<(max_save_at_haystack+max_save_at_len))) {
-                  max_save=(testlen-3-skip);
-                  max_save_at_skip=skip;
-                  max_save_at_len=testlen;
-                  max_save_at_haystack=haystack;
-                }
-              }
-            }
+      // is it worth even trying?
+      if (max_save<(MAX_LEN-3-skip)) {
+
+        // haystack is from buf[0]
+        for (haystack=0; haystack<=(consolidate+skip-MAX_LEN); haystack++) {   // less or equal, not only less than
+
+          needle=consolidate+skip;
+
+          m_len=mem_compare(&buf[needle],&buf[haystack],
+                            (MAX_LEN<(size-haystack))?MAX_LEN:(size-haystack));  // do not overrun!
+
+          // have we found a more interesting correspondance?
+          if ((m_len-3-skip)>max_save) {
+            max_save=(m_len-3-skip);
+            max_save_at_skip=skip;
+            max_save_at_len=m_len;
+            max_save_at_haystack=haystack;
           }
         }
       }
     }
-    
+
     if (max_save>0) {
       
       if (max_save_at_skip==0) {
       
         consolidate+=max_save_at_skip;   // consolidate 'skip' bytes
-        testlen=max_save_at_len;
+        m_len=max_save_at_len;
         haystack=max_save_at_haystack;
       
         //  printf ("Skip %2d bytes, compress string of len %d\n",max_save_at_skip,max_save_at_len);
       
-        buf[consolidate]=(testlen-MIN_LEN)+PSG_SUBSTRING;
+        buf[consolidate]=(m_len-MIN_LEN)+PSG_SUBSTRING;
         buf[consolidate+1]=(haystack&0xFF);
         buf[consolidate+2]=(haystack>>8);
-        memmove(&buf[consolidate+3],&buf[consolidate+testlen],size-(consolidate+3));
-        size-=(testlen-3);
+        memmove(&buf[consolidate+3],&buf[consolidate+m_len],size-(consolidate+3));
+        size-=(m_len-3);
         consolidate+=2;                  // 'consolidate' two additional bytes
        } else {
         consolidate+=(max_save_at_skip-1);   // consolidate 'skip-1' bytes
