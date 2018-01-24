@@ -13,6 +13,8 @@ Typical workflow:
 
 4) Optional, suggested: compress the PSG file(s) using the psgcomp tool. The psgdecomp tool can be used to verify that the compression was right.
 
+(or use Calindro's (PSGTool)[http://www.smspower.org/forums/16925-PSGToolAVGMToPSGConvertor] instead of 2,3,4)
+
 5) include the library and 'incbin' the PSG file(s) to your Z80 ASM source.
 
 6) call PSGInit once somewhere near the beginning of your code.
