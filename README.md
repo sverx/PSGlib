@@ -13,7 +13,7 @@ Typical workflow:
 
 4) Optional, suggested: compress the PSG file(s) using the psgcomp tool. The psgdecomp tool can be used to verify that the compression was right.
 
-(or use Calindro's (PSGTool)[http://www.smspower.org/forums/16925-PSGToolAVGMToPSGConvertor] instead of 2,3,4)
+(or use Calindro's [PSGTool](http://www.smspower.org/forums/16925-PSGToolAVGMToPSGConvertor) instead of 2,3,4)
 
 5) include the library and 'incbin' the PSG file(s) to your Z80 ASM source.
 
@@ -34,3 +34,6 @@ Typical workflow:
 +) You can set the music 'master' volume using PSGSetMusicVolumeAttenuation, even when a tune it's playing (and this won't affect SFX volumes).
 
 +) If you need to completely suspend all the audio, use PSGSilenceChannels and stop calling PSGFrame and PSGSFXFrame. When ready to resume, use PSGRestoreVolumes and start calling PSGFrame and PSGSFXFrame again at a constant pace.
+
+[PSGlib complete function reference](src/README.md)
+
