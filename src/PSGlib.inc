@@ -44,15 +44,19 @@ PSGInit:
   ret
 .ends
 
-.section "PSGPlay and PSGPlayNoRepeat" free
+.section "PSGPlay and PSGPlayNoRepeat and PSGPlayLoops" free
 ; ************************************************************************************
-; receives in HL the address of the PSG to start playing
+; all receive in HL the address of the PSG to start playing
+; PSGPlayLoops also receives in A the number of times to loop the PSG
 ; destroys AF
-PSGPlayNoRepeat:
-  xor a                           ; We don't want the song to loop
+PSGPlayNoRepeat:                  ; we don't want the song ever to loop
+  xor a                           
+PSGPlayLoops:                     ; we want the song to loop a certain amount of times
+  ld (PSGLoopCounter),a
+  xor a                           ; we don't want the song to loop forever
   jp +
 PSGPlay:
-  ld a,$1                         ; the song can loop when finished
+  ld a,$1                         ; we want the song to loop forever
 +:ld (PSGLoopFlag),a
   call PSGStop                    ; if there's a tune already playing, we should stop it!
   ld (PSGMusicStart),hl           ; store the begin point of music
@@ -141,6 +145,7 @@ PSGResume:
 PSGCancelLoop:
   xor a
   ld (PSGLoopFlag),a
+  ld (PSGLoopCounter),a
   ret
 .ends
 
@@ -597,11 +602,16 @@ _setLoopPoint:
   jp _intLoop
 
 _musicLoop:
-  ld a,(PSGLoopFlag)               ; looping requested?
-  or a
-  jp z,PSGStop                     ; No:stop it! (tail call optimization)
   ld hl,(PSGMusicLoopPoint)
-  jp _intLoop
+  ld a,(PSGLoopFlag)               ; infinite loop requested?
+  or a
+  jp nz,_intLoop                   ; Yes: do loop
+  ld a,(PSGLoopCounter)            ; one more loop requested?
+  or a
+  jp z,PSGStop                     ; No: stop the music! (tail call optimization)
+  dec a
+  ld (PSGLoopCounter),a            ; decrement loop counter
+  jp _intLoop                      ; do loop
 
 _substring:
   sub PSGSubString-4                  ; len is value - $08 + 4
@@ -741,7 +751,8 @@ _SFXsubstring:
   PSGMusicPointer            dw    ; the pointer to the current
   PSGMusicLoopPoint          dw    ; the pointer to the loop begin
   PSGMusicSkipFrames         db    ; the frames we need to skip
-  PSGLoopFlag                db    ; the tune should loop or not (flag)
+  PSGLoopFlag                db    ; the tune should loop forever or not (flag)
+  PSGLoopCounter             db    ; how many times the tune should loop
   PSGMusicLastLatch          db    ; the last PSG music latch
 
   ; decompression vars
