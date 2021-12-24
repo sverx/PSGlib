@@ -22,6 +22,12 @@ functions for music
 - no return values
 - destroys AF
 
+**PSGPlayLoops**: starts a tune and loop it a certain amount of times
+- *needs* the address of the PSG to start playing in HL
+- *needs* the desired loop count in A
+- no return values
+- destroys AF
+
 **PSGStop**: stops (pauses) the music (leaving the SFX on, if one is playing)
 - no required parameters
 - no return values
@@ -32,7 +38,7 @@ functions for music
 - no return values
 - destroys AF
 
-**PSGCancelLoop**: sets the currently looping music to no more loops after the current
+**PSGCancelLoop**: sets the currently looping music to no more loops after the current has completed
 - no required parameters
 - no return values
 - destroys AF
