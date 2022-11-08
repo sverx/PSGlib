@@ -41,6 +41,10 @@ int main (int argc, char *argv[]) {
   }
   
   fIN=fopen(argv[1],"rb");
+  if (!fIN) {
+    perror(argv[1]);
+    return (1);
+  }
   size=fread (&buf, 1, BUF_SIZE, fIN);      // read input file
   fclose (fIN);
   
