@@ -62,13 +62,16 @@ int checkLoopOffset(void) {        // returns 1 when loop_offset becomes 0
 void init_frame(int initial_state) {
   int i;
   for (i=0;i<CHANNELS;i++) {
-    if ((!initial_state) ||                                // set to FALSE
-        ((initial_state) && (!is_sfx)) ||                  // or set to TRUE if it's not a SFX
-        ((initial_state) && (is_sfx) && (active[i]))) {    // or set to TRUE if it's a SFX and the chn is active
-      volume_change[i]=initial_state;
-      freq_change[i]=initial_state;
-      hi_freq_change[i]=initial_state;
-    }
+    //~ if ((!initial_state) ||                                // set to FALSE
+        //~ ((initial_state) && (!is_sfx)) ||                  // or set to TRUE if it's not a SFX
+        //~ ((initial_state) && (is_sfx) && (active[i]))) {    // or set to TRUE if it's a SFX and the chn is active
+      //~ volume_change[i]=initial_state;
+      //~ freq_change[i]=initial_state;
+      //~ hi_freq_change[i]=initial_state;
+    //~ }
+    volume_change[i]=FALSE;
+    freq_change[i]=FALSE;
+    hi_freq_change[i]=FALSE;
   }
   frame_started=initial_state;
 }
@@ -79,23 +82,30 @@ void add_command (unsigned char c) {
     chn=(c&0x60)>>5;
     typ=(c&0x10)>>4;
     if (typ==1) {
-      volume[chn]=c&0x0F;
-      volume_change[chn]=TRUE;
+      if (volume[chn]!=(c&0x0F)) {        // see if we're really changing the volume or not
+        volume[chn]=c&0x0F;
+        volume_change[chn]=TRUE;
+      }
     } else {
-      freq[chn]=(freq[chn]&0xFFF0)|(c&0x0F);
-      freq_change[chn]=TRUE;
+      if ((chn==3) || ((freq[chn]&0x0F)!=(c&0x0F))) {   // see if we're really changing the low part of the frequency or not (saving noise channel retrigs!)
+        freq[chn]=(freq[chn]&0xFFF0)|(c&0x0F);
+        freq_change[chn]=TRUE;
+      }
     }
   } else {                // it's a data (not a latch)
     chn=(lastlatch&0x60)>>5;
     typ=(lastlatch&0x10)>>4;
     if (typ==1) {
-      volume[chn]=c&0x0F;
-      volume_change[chn]=TRUE;
+      if (volume[chn]!=(c&0x0F)) {        // see if we're really changing the volume or not
+        volume[chn]=c&0x0F;
+        volume_change[chn]=TRUE;
+      }
     } else {
-      if ((c&0x3F)!=(freq[chn]>>4))     // see if we're really changing the high part of the frequence or not
+      if ((c&0x3F)!=(freq[chn]>>4)) {     // see if we're really changing the high part of the frequency or not
+        freq[chn]=(freq[chn]&0x000F)|((c&0x3F)<<4);
         hi_freq_change[chn]=TRUE;
-      freq[chn]=(freq[chn]&0x000F)|((c&0x3F)<<4);
-      freq_change[chn]=TRUE;
+        freq_change[chn]=TRUE;            // to update the high part of the frequency we need to update the low part too, there's no other way
+      }
     }
   }
 }
@@ -311,7 +321,7 @@ int main (int argc, char *argv[]) {
 
         if ((!is_sfx) || (active[latched_chn])) {   // output only if on an active channel
 
-        found_frame();
+          found_frame();
 
           if ((first_byte) && ((c&0x80)==0)) {
             add_command(lastlatch);
