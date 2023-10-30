@@ -43,7 +43,7 @@ int pause_len=0;
 unsigned char lastlatch=0x9F;   // latch volume silent on channel 0
 int active[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
 int is_sfx=FALSE;
-
+int warn_32=FALSE;
 
 void decLoopOffset(int n) {
   loop_offset-=n;
@@ -91,6 +91,12 @@ void add_command (unsigned char c) {
         freq[chn]=(freq[chn]&0xFFF0)|(c&0x0F);
         freq_change[chn]=TRUE;
       }
+
+      if ((chn==3) && (is_sfx) && (active[3]) && (!active[2]) && ((c&0x3)==0x3) && (!warn_32)) {
+        printf("Warning: channel 3 (the noise channel) is using channel 2 tone. You probably need to run vgm2psg using option 23\n");
+        warn_32=TRUE;
+      }
+
     }
   } else {                // it's a data (not a latch)
     chn=(lastlatch&0x60)>>5;
@@ -200,15 +206,14 @@ int main (int argc, char *argv[]) {
   unsigned int file_signature,frame_rate;
   int sample_divider=735;                            // NTSC (default)
 
-  printf ("*** Sverx's VGM to PSG converter ***\n");
+  printf ("*** sverx's VGM to PSG converter ***\n");
 
   if ((argc<3) || (argc>4)) {
     printf ("Usage: vgm2psg inputfile.VGM outputfile.PSG [2|3|23]\n");
-    printf (" the optional third parameter specifies which channel(s) should be active,\n");
-    printf (" for SFX conversion:\n");
-    printf (" - 2 means the SFX is using channel 2 only\n");
-    printf (" - 3 means the SFX is using channel 3 (noise) only\n");
-    printf (" - 23 means the SFX is using both channels\n");
+    printf (" [optional] when converting SFXs, the third parameter specifies which channel(s) should be active:\n");
+    printf ("  2 means the SFX is using channel 2 only\n");
+    printf ("  3 means the SFX is using channel 3 (noise) only\n");
+    printf (" 23 means the SFX is using both channels\n");
     return (1);
   }
 
