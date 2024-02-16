@@ -57,7 +57,7 @@ functions for SFX
 
 **PSGSFXPlay** / **PSGSFXPlayLoop**: starts a SFX (playing it once or repeatedly)
 - *needs* the address of the SFX to start playing in HL
-- *needs* a mask indicating which channels to be used by the SFX in C. The only possible values are `SFX_CHANNEL2`,`SFX_CHANNEL3` and `SFX_CHANNELS2AND3`.
+- *needs* a mask indicating which channels to be used by the SFX in C. The possible values are combinations (sums) of `SFX_CHANNEL0`,`SFX_CHANNEL1`,`SFX_CHANNEL2`,`SFX_CHANNEL3`. `SFX_CHANNELS2AND3` is provided too, for compatibility with previous library version.
 - destroys AF
 
 **PSGSFXStop**: stops the SFX (leaving the music on, if music is playing)
@@ -98,6 +98,8 @@ value of the defined constants
 - `PSG_STOPPED`   0
 - `PSG_PLAYING`   1
 
+- `SFX_CHANNEL0`        $04
+- `SFX_CHANNEL1`        $08
 - `SFX_CHANNEL2`        $01
 - `SFX_CHANNEL3`        $02
 - `SFX_CHANNELS2AND3`   $03
