@@ -604,7 +604,7 @@ _continue:
   bit 4,a                        ; test if it is a volume
   jr nz,_latch_Volume            ; jump if volume data
   bit 6,a                        ; test if the latch it is for channels 0-1 or for 2-3
-  jp z,_latch_chn23
+  jp nz,_latch_chn23             ; jump if it is for channels 2-3
 
   ; we have got the latch (tone, chn 0 or 1) PSG byte both in A and in B
   ; and we have to check if the value should be passed to PSG or not
