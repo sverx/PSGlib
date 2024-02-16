@@ -62,13 +62,6 @@ int checkLoopOffset(void) {        // returns 1 when loop_offset becomes 0
 void init_frame(int initial_state) {
   int i;
   for (i=0;i<CHANNELS;i++) {
-    //~ if ((!initial_state) ||                                // set to FALSE
-        //~ ((initial_state) && (!is_sfx)) ||                  // or set to TRUE if it's not a SFX
-        //~ ((initial_state) && (is_sfx) && (active[i]))) {    // or set to TRUE if it's a SFX and the chn is active
-      //~ volume_change[i]=initial_state;
-      //~ freq_change[i]=initial_state;
-      //~ hi_freq_change[i]=initial_state;
-    //~ }
     volume_change[i]=FALSE;
     freq_change[i]=FALSE;
     hi_freq_change[i]=FALSE;
@@ -93,7 +86,7 @@ void add_command (unsigned char c) {
       }
 
       if ((chn==3) && (is_sfx) && (active[3]) && (!active[2]) && ((c&0x3)==0x3) && (!warn_32)) {
-        printf("Warning: channel 3 (the noise channel) is using channel 2 tone. You probably need to run vgm2psg using option 23\n");
+        printf("Warning: channel 3 (the noise channel) is using channel 2 tone. You probably need to run vgm2psg including channel 2 too.\n");
         warn_32=TRUE;
       }
 
@@ -208,12 +201,21 @@ int main (int argc, char *argv[]) {
 
   printf ("*** sverx's VGM to PSG converter ***\n");
 
+  if (argc>4)
+    printf ("Fatal: too many parameters specified. Three parameters at max are allowed.\n");
+
+  if (argc<3)
+    printf ("Fatal: too few parameters specified. At least two parameters are required.\n");
+
   if ((argc<3) || (argc>4)) {
-    printf ("Usage: vgm2psg inputfile.VGM outputfile.PSG [2|3|23]\n");
-    printf (" [optional] when converting SFXs, the third parameter specifies which channel(s) should be active:\n");
-    printf ("  2 means the SFX is using channel 2 only\n");
-    printf ("  3 means the SFX is using channel 3 (noise) only\n");
-    printf (" 23 means the SFX is using both channels\n");
+    printf ("Usage: vgm2psg inputfile.VGM outputfile.PSG [[0][1][2][3]]\n");
+    printf (" [optional] when converting SFXs, the third parameter specifies which channel(s) should be active, examples:\n");
+    printf ("   0 means the SFX is using channel 0 only\n");
+    printf ("   1 means the SFX is using channel 1 only\n");
+    printf ("   2 means the SFX is using channel 2 only\n");
+    printf ("   3 means the SFX is using channel 3 (noise) only\n");
+    printf ("  23 means the SFX is using both channel 2 and channel 3 (noise)\n");
+    printf (" 123 means the SFX is using channels 1 and 2 and channel 3 (noise)\n");
     return (1);
   }
 
@@ -223,16 +225,28 @@ int main (int argc, char *argv[]) {
 
     for (i=0;i<strlen(argv[3]);i++) {
       switch (argv[3][i]) {
+        case '0':
+          active[0]=1;
+          break;
+        case '1':
+          active[1]=1;
+          break;
         case '2':
           active[2]=1;
           break;
         case '3':
           active[3]=1;
           break;
+        default:
+         printf ("Fatal: the optional third parameter can only contains digits 0 to 3\n");
+         return (1);
       }
     }
-    is_sfx=TRUE;
-    printf ("Info: SFX conversion on channel(s): %s%s\n",active[2]?"2":"",active[3]?"3":"");
+
+    if (!(active[0] && active[1] && active[2] && active[3])) {
+      is_sfx=TRUE;
+      printf ("Info: SFX conversion on channel(s): %s%s%s%s\n",active[0]?"0":"",active[1]?"1":"",active[2]?"2":"",active[3]?"3":"");
+    }
   }
 
   init_frame(TRUE);
