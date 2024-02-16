@@ -131,7 +131,7 @@ PSGResume:
   or PSGLatch|PSGChannel3
   out (PSGDataPort),a
   ld a,(PSGChan3Volume)                         ; restore channel 3 volume
-  or PSGLatch|PSGChannel2|PSGVolumeData
+  or PSGLatch|PSGChannel3|PSGVolumeData
   out (PSGDataPort),a
 +:ld a,PSG_PLAYING
   ld (PSGMusicStatus),a                         ; set status to PSG_PLAYING
