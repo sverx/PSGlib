@@ -111,55 +111,87 @@ PSGStop:
 
 .section "PSGResume" free
 ; ************************************************************************************
-; resume a previously stopped music
-; destroys AF
+; resume a previously stopped music (with volume attenuation if needed)
+; destroys AF,HL
 PSGResume:
   ld a,(PSGMusicStatus)                         ; if it's already playing, leave
   or a
   ret nz
+
+  ld hl,PSGMusicVolumeAttenuation
+  ld l,(hl)                                     ; load volume attenuation in L
+
   ld a,(PSGChannel0SFX)
   or a
-  jr nz,+
+  jr nz,_ch1
   ld a,(PSGChan0LowTone)                        ; restore channel 0 frequency
   or PSGLatch|PSGChannel0
   out (PSGDataPort),a
   ld a,(PSGChan0HighTone)
   out (PSGDataPort),a
   ld a,(PSGChan0Volume)                         ; restore channel 0 volume
-  or PSGLatch|PSGChannel0|PSGVolumeData
-  out (PSGDataPort),a
-+:ld a,(PSGChannel1SFX)
+  and $0F
+  add a,l
+  cp $0F                                        ; check overflow
+  jr c,+                                        ; if it's <=15 then ok
+  ld a,$0F                                      ; else, reset to 15
++:or PSGLatch|PSGChannel0|PSGVolumeData
+  out (PSGDataPort),a                           ; output the byte
+
+_ch1:
+  ld a,(PSGChannel1SFX)
   or a
-  jr nz,+
+  jr nz,_ch2
   ld a,(PSGChan1LowTone)                        ; restore channel 1 frequency
   or PSGLatch|PSGChannel1
   out (PSGDataPort),a
   ld a,(PSGChan1HighTone)
   out (PSGDataPort),a
   ld a,(PSGChan1Volume)                         ; restore channel 1 volume
-  or PSGLatch|PSGChannel1|PSGVolumeData
+  and $0F
+  add a,l
+  cp $0F                                        ; check overflow
+  jr c,+                                        ; if it's <=15 then ok
+  ld a,$0F                                      ; else, reset to 15
++:or PSGLatch|PSGChannel1|PSGVolumeData
   out (PSGDataPort),a
-+:ld a,(PSGChannel2SFX)
+
+_ch2:
+  ld a,(PSGChannel2SFX)
   or a
-  jr nz,+
+  jr nz,_ch3
   ld a,(PSGChan2LowTone)                        ; restore channel 2 frequency
   or PSGLatch|PSGChannel2
   out (PSGDataPort),a
   ld a,(PSGChan2HighTone)
   out (PSGDataPort),a
   ld a,(PSGChan2Volume)                         ; restore channel 2 volume
-  or PSGLatch|PSGChannel2|PSGVolumeData
+  and $0F
+  add a,l
+  cp $0F                                        ; check overflow
+  jr c,+                                        ; if it's <=15 then ok
+  ld a,$0F                                      ; else, reset to 15
++:or PSGLatch|PSGChannel2|PSGVolumeData
   out (PSGDataPort),a
-+:ld a,(PSGChannel3SFX)
+
+_ch3:
+  ld a,(PSGChannel3SFX)
   or a
-  jr nz,+
+  jr nz,_leave
   ld a,(PSGChan3LowTone)                        ; restore channel 3 frequency
   or PSGLatch|PSGChannel3
   out (PSGDataPort),a
   ld a,(PSGChan3Volume)                         ; restore channel 3 volume
-  or PSGLatch|PSGChannel3|PSGVolumeData
+  and $0F
+  add a,l
+  cp $0F                                        ; check overflow
+  jr c,+                                        ; if it's <=15 then ok
+  ld a,$0F                                      ; else, reset to 15
++:or PSGLatch|PSGChannel3|PSGVolumeData
   out (PSGDataPort),a
-+:ld a,PSG_PLAYING
+
+_leave:
+  ld a,PSG_PLAYING
   ld (PSGMusicStatus),a                         ; set status to PSG_PLAYING
   ret
 .ends

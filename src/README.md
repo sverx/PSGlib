@@ -36,7 +36,7 @@ functions for music
 **PSGResume**: resume the previously stopped music
 - no required parameters
 - no return values
-- destroys AF
+- destroys AF,HL
 
 **PSGCancelLoop**: sets the currently looping music to no more loops after the current has completed
 - no required parameters
