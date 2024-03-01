@@ -6,7 +6,8 @@
 #define     FALSE                   0
 #define     TRUE                    1
 
-#define     VGM_OLD_HEADERSIZE      64        // 'old' VGM header
+#define     VGM_OLD_HEADERSIZE      64        // 'old' VGM header size
+#define     VGM_BIG_HEADERSIZE      256       // 'big' VGM header size
 #define     VGM_HEADER_LOOPPOINT    0x1C
 #define     VGM_HEADER_FRAMERATE    0x24
 #define     VGM_DATA_OFFSET         0x34
@@ -53,11 +54,9 @@ void incLoopOffset(void) {
   loop_offset++;
 }
 
-
 int checkLoopOffset(void) {        // returns 1 when loop_offset becomes 0
   return (loop_offset==0);
 }
-
 
 void init_frame(int initial_state) {
   int i;
@@ -281,12 +280,21 @@ int main (int argc, char *argv[]) {
   gzseek(fIN,VGM_DATA_OFFSET,SEEK_SET);       // seek to DATAOFFSET in the VGM header
   gzread (fIN,&data_offset, 4);               // read data_offset
 
-  if (data_offset) {
+  if (data_offset!=0) {
     gzseek(fIN,VGM_DATA_OFFSET+data_offset,SEEK_SET);  // skip VGM header
     data_offset=VGM_DATA_OFFSET+data_offset;
   } else {
     gzseek(fIN,VGM_OLD_HEADERSIZE,SEEK_SET);           // skip 'old' VGM header
-    data_offset=VGM_OLD_HEADERSIZE;
+    // note: some VGMs can have zero in the data_offset field and have 256 bytes long header instead of 64, filled with zeroes. We do a quick check here.
+    c=gzgetc(fIN);
+    if (c==0) {
+      printf ("Warning: malformed VGM, will try my best\n");
+      gzseek(fIN,VGM_BIG_HEADERSIZE,SEEK_SET);         // skip 'big' VGM header
+      data_offset=VGM_BIG_HEADERSIZE;
+    } else {
+      gzseek(fIN,VGM_OLD_HEADERSIZE,SEEK_SET);         // skip 'old' VGM header
+      data_offset=VGM_OLD_HEADERSIZE;
+    }
   }
 
   if (loop_offset!=0) {
