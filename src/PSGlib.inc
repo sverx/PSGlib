@@ -71,6 +71,11 @@ PSGPlay:
   ld (PSGMusicSubstringLen),a     ; reset the substring len (for compression)
   ld a,PSGLatch|PSGChannel0|PSGVolumeData|$0F   ; latch channel 0, volume=0xF (silent)
   ld (PSGMusicLastLatch),a        ; reset last latch to chn 0 volume 0
+  ld a,$0F                        ; ensure unused channels remain silent
+  ld (PSGChan0Volume),a
+  ld (PSGChan1Volume),a
+  ld (PSGChan2Volume),a
+  ld (PSGChan3Volume),a
   ld a,PSG_PLAYING
   ld (PSGMusicStatus),a           ; set status to PSG_PLAYING
   ret
