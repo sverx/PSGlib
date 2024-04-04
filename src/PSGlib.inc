@@ -288,6 +288,74 @@ _restore_channel3:
   ret
 .ends
 
+.section "PSGSetSFXVolumeAttenuation" free
+; ************************************************************************************
+; receives in L the volume attenuation for the SFXs (0-15)
+; destroys AF
+PSGSetSFXVolumeAttenuation:
+  ld a,l
+  ld (PSGSFXVolumeAttenuation),a
+  ld a,(PSGSFXStatus)              ; if an SFX is not playing, leave
+  or a
+  ret z
+
+  ld a,(PSGChannel0SFX)            ; channel 0 used by SFX?
+  or a
+  jr z,_restore_channel1           ; if not, skip channel 0
+
+  ld a,(PSGSFXChan0Volume)
+  and $0F
+  add a,l
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel0|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+
+_restore_channel1:
+  ld a,(PSGChannel1SFX)            ; channel 1 used by SFX?
+  or a
+  jr z,_restore_channel2           ; if not, skip channel 1
+
+  ld a,(PSGSFXChan1Volume)
+  and $0F
+  add a,l
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel1|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+
+_restore_channel2:
+  ld a,(PSGChannel2SFX)            ; channel 2 used by SFX?
+  or a
+  jr z,_restore_channel3           ; if not, skip channel 2
+
+  ld a,(PSGSFXChan2Volume)
+  and $0F
+  add a,l
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel2|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+
+_restore_channel3:
+  ld a,(PSGChannel3SFX)            ; channel 3 used by SFX?
+  or a
+  ret z                            ; if not, we're done
+
+  ld a,(PSGSFXChan3Volume)
+  and $0F
+  add a,l
+  cp $0F                           ; check overflow
+  jr c,+                           ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
++:or PSGLatch|PSGChannel3|PSGVolumeData
+  out (PSGDataPort),a              ; output the byte
+  ret
+.ends
+
 .section "PSGSilenceChannels" free
 ; ************************************************************************************
 ; sets all PSG channels to volume ZERO
@@ -309,8 +377,6 @@ PSGSilenceChannels:
 ; resets all PSG channels to previous volume
 ; destroys AF,HL
 PSGRestoreVolumes:
-  ld hl,PSGMusicVolumeAttenuation
-
   ld a,(PSGChannel0SFX)            ; channel 0 busy with SFX?
   jr nz,_restoreSFX0
 
@@ -320,16 +386,24 @@ PSGRestoreVolumes:
 
   ld a,(PSGChan0Volume)
   and $0F
+  ld hl,PSGMusicVolumeAttenuation
   add a,(hl)
   cp $0F                           ; check overflow
-  jr c,+                           ; if it's <=15 then ok
+  jr c,_write0                     ; if it's <=15 then ok
   ld a,$0F                         ; else, reset to 15
-  jr c,+
+  jp _write0
 
 _restoreSFX0:
   ld a,(PSGSFXChan0Volume)
   and $0F
-+:or PSGLatch|PSGChannel0|PSGVolumeData
+  ld hl,PSGSFXVolumeAttenuation
+  add a,(hl)
+  cp $0F                           ; check overflow
+  jr c,_write0                     ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
+
+_write0:
+  or PSGLatch|PSGChannel0|PSGVolumeData
   out (PSGDataPort),a              ; output the byte
 
 _chkchn1:
@@ -342,16 +416,24 @@ _chkchn1:
 
   ld a,(PSGChan1Volume)
   and $0F
+  ld hl,PSGMusicVolumeAttenuation
   add a,(hl)
   cp $0F                           ; check overflow
-  jr c,+                           ; if it's <=15 then ok
+  jr c,_write1                     ; if it's <=15 then ok
   ld a,$0F                         ; else, reset to 15
-  jr c,+
+  jp _write1
 
 _restoreSFX1:
   ld a,(PSGSFXChan1Volume)
   and $0F
-+:or PSGLatch|PSGChannel1|PSGVolumeData
+  ld hl,PSGSFXVolumeAttenuation
+  add a,(hl)
+  cp $0F                           ; check overflow
+  jr c,_write1                     ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
+
+_write1:
+  or PSGLatch|PSGChannel1|PSGVolumeData
   out (PSGDataPort),a              ; output the byte
 
 _chkchn2:
@@ -364,16 +446,24 @@ _chkchn2:
 
   ld a,(PSGChan2Volume)
   and $0F
+  ld hl,PSGMusicVolumeAttenuation
   add a,(hl)
   cp $0F                           ; check overflow
-  jr c,+                           ; if it's <=15 then ok
+  jr c,_write2                     ; if it's <=15 then ok
   ld a,$0F                         ; else, reset to 15
-  jr c,+
+  jp _write2
 
 _restoreSFX2:
   ld a,(PSGSFXChan2Volume)
   and $0F
-+:or PSGLatch|PSGChannel2|PSGVolumeData
+  ld hl,PSGSFXVolumeAttenuation
+  add a,(hl)
+  cp $0F                           ; check overflow
+  jr c,_write2                     ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
+
+_write2:
+  or PSGLatch|PSGChannel2|PSGVolumeData
   out (PSGDataPort),a              ; output the byte
 
 _chkchn3:
@@ -386,16 +476,24 @@ _chkchn3:
 
   ld a,(PSGChan3Volume)
   and $0F
+  ld hl,PSGMusicVolumeAttenuation
   add a,(hl)
   cp $0F                           ; check overflow
-  jr c,+                           ; if it's <=15 then ok
+  jr c,_write3                     ; if it's <=15 then ok
   ld a,$0F                         ; else, reset to 15
-  jr c,+
+  jp _write3
 
 _restoreSFX3:
   ld a,(PSGSFXChan3Volume)
   and $0F
-+:or PSGLatch|PSGChannel3|PSGVolumeData
+  ld hl,PSGSFXVolumeAttenuation
+  add a,(hl)
+  cp $0F                           ; check overflow
+  jr c,_write3                     ; if it's <=15 then ok
+  ld a,$0F                         ; else, reset to 15
+
+_write3:
+  or PSGLatch|PSGChannel3|PSGVolumeData
   out (PSGDataPort),a              ; output the byte
   ret
 .ends
@@ -880,6 +978,8 @@ _SFXcontinue:
   ld a,b                         ; restore byte
   cp PSGData
   jp c,_SFXcommand               ; if less than $40 then it is a command
+  bit 7,a                        ; check if it is a latch
+  jr z,_SFXoutbyte               ; if not, output it directly
   bit 4,a                        ; check if it is a volume byte
   jr z,_SFXoutbyte               ; if not, output it directly
 
@@ -889,21 +989,34 @@ _SFXcontinue:
   bit 5,a                        ; check if it is volume for channel 0 or channel 1
   jr nz,_SFXvolumechn1
   ld (PSGSFXChan0Volume),a
-  jr _SFXoutbyte
+  jr _SFXoutvolume
 
 _SFXvolumechn1:
   ld (PSGSFXChan1Volume),a
-  jr _SFXoutbyte
+  jr _SFXoutvolume
 
 _SFXchn23:
   bit 5,a                        ; check if it is volume for channel 2 or channel 3
   jr nz,_SFXvolumechn3
   ld (PSGSFXChan2Volume),a
-  jr _SFXoutbyte
+  jr _SFXoutvolume
 
 _SFXvolumechn3:
   ld (PSGSFXChan3Volume),a
 
+_SFXoutvolume:
+  and $0F                        ; keep lower nibble
+  ld c,a                         ; save value
+  ld a,(PSGSFXVolumeAttenuation) ; load volume attenuation
+  add a,c                        ; add value
+  cp $0F                         ; check overflow
+  jr c,_no_overflow_SFX          ; if it is <=15 then ok
+  ld a,$0F                       ; else, reset to 15
+_no_overflow_SFX:
+  ld c,a                         ; save new attenuated volume value
+  ld a,b                         ; retrieve original PSG command
+  and $F0                        ; keep upper nibble (channel+volume bits)
+  or c                           ; set attenuated SFX volume
 _SFXoutbyte:
   out (PSGDataPort),a            ; output the byte
   jp _intSFXLoop
@@ -1015,6 +1128,8 @@ _SFXsubstring:
   PSGSFXChan1Volume          db       ; the volume for channel 1
   PSGSFXChan2Volume          db       ; the volume for channel 2
   PSGSFXChan3Volume          db       ; the volume for channel 3
+
+  PSGSFXVolumeAttenuation    db       ; the volume attenuation applied to the SFX (0-15)
 
   ; fundamental vars for SFX
   PSGSFXStatus               db       ; are we playing a SFX?

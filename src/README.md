@@ -82,6 +82,11 @@ functions for music volume and hardware channels handling
 - no return values
 - destroys AF
 
+**PSGSetSFXVolumeAttenuation**: sets the volume attenuation for the SFXs
+- *needs* the volume attenuation value in L (valid value are 0-15 where 0 means no attenuation and 15 is complete silence)
+- no return values
+- destroys AF
+
 **PSGSilenceChannels**: sets all hardware channels to volume ZERO (useful if you need to pause all audio)
 - no required parameters
 - no return values
