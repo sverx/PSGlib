@@ -5,7 +5,7 @@ Z80 ASM library (and C conversion/compression tools) to allow replay of SN76489 
 
 Typical workflow:
 
-1) You (or a friend of yours) track one or more SN76489 module(s) and SFX(s) using either Mod2PSG2 or DefleMask or VGM Music Maker or whatever tool you prefer as long as it supports exporting in VGM format.
+1) You (or a friend of yours) track one or more SN76489 module(s) and SFX(s) using either [Furnace](https://github.com/tildearrow/furnace), [DefleMask](https://www.deflemask.com), [Mod2PSG2](https://www.smspower.org/Music/Mod2PSG2) or VGM Music Maker or whatever other tracker/tool you prefer as long as it supports exporting in VGM format. SFXs can be also tracked using the abovementioned tools or generated using the amazing [sn_sfxr](https://harmlesslion.com/sn_sfxr/) sound effects generator, for instance.
 
 2) Use Calindro's [PSGTool](http://www.smspower.org/forums/16925-PSGToolAVGMToPSGConvertor) to convert each VGM file into a PSG file. This actually saves you these steps:
 
