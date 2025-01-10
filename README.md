@@ -5,15 +5,13 @@ Z80 ASM library (and C conversion/compression tools) to allow replay of SN76489 
 
 Typical workflow:
 
-1) You (or a friend of yours) track one or more SN76489 module(s) and SFX(s) using either [Furnace](https://github.com/tildearrow/furnace), [DefleMask](https://www.deflemask.com), [Mod2PSG2](https://www.smspower.org/Music/Mod2PSG2) or VGM Music Maker or whatever other tracker/tool you prefer as long as it supports exporting in VGM format. SFXs can be also tracked using the abovementioned tools or generated using the amazing [sn_sfxr](https://harmlesslion.com/sn_sfxr/) sound effects generator, for instance.
+1) You (or a friend of yours) track one or more *SN76489* module(s) and SFX(s) using either [Furnace](https://github.com/tildearrow/furnace), [DefleMask](https://www.deflemask.com), [Mod2PSG2](https://www.smspower.org/Music/Mod2PSG2) or [VGM Music Maker](https://archive.org/details/vgmmaker11) ... or whatever other tracker/tool you prefer as long as it supports exporting in **VGM** format. SFXs can also be generated using the amazing [sn_sfxr](https://harmlesslion.com/sn_sfxr/) sound effects generator for instance, and then edited in Mod2PSG2 later as this tool also supports *importing* VGMs.
 
 2) Use Calindro's [PSGTool](http://www.smspower.org/forums/16925-PSGToolAVGMToPSGConvertor) to convert each VGM file into a PSG file. This actually saves you these steps:
 
-  * Optimize your VGM using Maxim's VGMTool
-
-  * Convert the VGM to PSG file(s) using PSGlib's vgm2psg tool.
-
-  * Compress the PSG file(s) using PSGlib's psgcomp tool (PSGlib's psgdecomp tool can be used to verify that the compression was right)
+ - Optimize your VGM using Maxim's VGMTool
+ - Convert the VGM to PSG file(s) using PSGlib's vgm2psg tool.
+ - Compress the PSG file(s) using PSGlib's psgcomp tool (PSGlib's psgdecomp tool can be used to verify that the compression was right)
 
 3) include PSGlib.inc and 'incbin' all the PSG file(s) to your Z80 ASM source.
 
@@ -23,15 +21,11 @@ Typical workflow:
 
 6) Start and stop (pause) tunes when needed using PSGPlay and PSGStop calls, start and stop SFXs when needed using PSGSFXPlay and PSGSFXStop calls.
 
- * Stopped (paused) tunes can be unpaused using a PSGResume call.
-
- * Tunes can be set to run just once instead of endlessly using PSGPlayNoRepeat call, or to loop a given number of times only using PSGPlayLoops call.
-
- * Any looping tune can be told to have no more loops using PSGCancelLoop call at any time and it will stop when its end is reached.
-
- * Looping SFXs are supported too: fire them using a PSGSFXPlayLoop call, cancel their loop using a PSGSFXCancelLoop call.
-
- * To check if a tune is still playing use PSGGetStatus call, to check if a SFX is still playing use PSGSFXGetStatus call.
+ - Stopped (paused) tunes can be unpaused using a PSGResume call.
+ - Tunes can be set to run just once instead of endlessly using PSGPlayNoRepeat call, or to loop a given number of times only using PSGPlayLoops call.
+ - Any looping tune can be told to have no more loops using PSGCancelLoop call at any time and it will stop when its end is reached.
+ - Looping SFXs are supported too: fire them using a PSGSFXPlayLoop call, cancel their loop using a PSGSFXCancelLoop call.
+ - To check if a tune is still playing use PSGGetStatus call, to check if a SFX is still playing use PSGSFXGetStatus call.
 
 +) You can set the music 'master' volume using PSGSetMusicVolumeAttenuation, even when a tune it's playing (and this won't affect SFX volumes).
 
