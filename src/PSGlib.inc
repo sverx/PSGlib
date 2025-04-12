@@ -770,9 +770,9 @@ _latch_chn23:
   and 3                          ; test if channel 3 is set to use the frequency of channel 2
   cp 3
   jr nz,_send2PSG_B              ; if channel 3 does not use frequency of channel 2 jump
-  ld a,(PSGSFXStatus)            ; test if an SFX is playing
+  ld a,(PSGChannel2SFX)          ; test if an SFX is playing on channel 2
   or a
-  jr z,_send2PSG_B               ; if no SFX is playing jump
+  jr z,_send2PSG_B               ; if no SFX is playing on channel 2 jump
   ld (PSGChannel3SFX),a          ; otherwise mark channel 3 as occupied
   ld a,PSGLatch|PSGChannel3|PSGVolumeData|$0F   ; and silence channel 3
   out (PSGDataPort),a
