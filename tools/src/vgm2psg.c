@@ -425,8 +425,6 @@ int main (int argc, char *argv[]) {
         // Drop compact (1 to 16) sample skip command
         if ((c & 0xf0) == VGM_SAMPLESKIP_7N) {
           printf("Warning: pause length isn't perfectly frame sync'd\n");
-          decLoopOffset(1);
-          if (checkLoopOffset()) writeLoopMarker();
           break;
         }
 
