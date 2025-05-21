@@ -17,6 +17,7 @@
 #define     VGM_FMFOLLOWS   0x51
 #define     VGM_FRAMESKIP_NTSC   0x62
 #define     VGM_FRAMESKIP_PAL    0x63
+#define     VGM_SAMPLESKIP_7N    0x70 // 0x7n  skip n+1 samples
 #define     VGM_SAMPLESKIP  0x61
 #define     VGM_ENDOFDATA   0x66
 
@@ -379,9 +380,11 @@ int main (int argc, char *argv[]) {
           gzungetc(c,fIN);
           incLoopOffset();
         }
+        else if (checkLoopOffset()) {
+          writeLoopMarker();
+        }
 
         pause_len+=fs;
-        if (checkLoopOffset()) writeLoopMarker();
 
         first_byte=TRUE;
 
@@ -421,6 +424,12 @@ int main (int argc, char *argv[]) {
         break;
 
       default:
+        // Drop compact (1 to 16) sample skip command
+        if ((c & 0xf0) == VGM_SAMPLESKIP_7N) {
+          printf("Warning: pause length isn't perfectly frame sync'd\n");
+          break;
+        }
+
         printf("Fatal: found unknown char 0x%02x\n",c);
         leave=1;
         fatal=1;
