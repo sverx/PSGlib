@@ -380,9 +380,11 @@ int main (int argc, char *argv[]) {
           gzungetc(c,fIN);
           incLoopOffset();
         }
+        else if (checkLoopOffset()) {
+          writeLoopMarker();
+        }
 
         pause_len+=fs;
-        if (checkLoopOffset()) writeLoopMarker();
 
         first_byte=TRUE;
 
