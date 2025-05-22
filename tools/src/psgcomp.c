@@ -117,6 +117,11 @@ int main (int argc, char *argv[]) {
         memmove(&buf[consolidate+3],&buf[consolidate+m_len],size-(consolidate+3));
         size-=(m_len-3);
         consolidate+=2;                  // 'consolidate' two additional bytes
+
+        // check if our loop marker index has to be moved
+        if (loop_marker_pos>=(consolidate+3))
+          loop_marker_pos-=(m_len-3);
+
        } else {
         consolidate+=(max_save_at_skip-1);   // consolidate 'skip-1' bytes
        }
