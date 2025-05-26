@@ -20,6 +20,7 @@ int size;
 int main (int argc, char *argv[]) {
 
   int i,offset,length;
+  int lp_substr=0;
 
   if (argc!=3) {
     printf ("Usage: psgdecomp inputfile.PSG outputfile.PSG\n");
@@ -40,17 +41,24 @@ int main (int argc, char *argv[]) {
       offset=buf[i+1]+(buf[i+2]*256);
       length = buf[i]-PSG_SUBSTRING+MIN_LEN;
       if (memchr(&buf[offset], PSG_LOOPMARKER, length)) {
-        printf ("Warning: Loop point set in substring\n");
+        lp_substr=1;
       }
       fwrite (&buf[offset], 1, length, fOUT);
       i+=2;  // skip two additional bytes
 
     } else {
       fwrite (&buf[i], 1, 1, fOUT);
+      if (buf[i] == PSG_LOOPMARKER) {
+        lp_substr = 0;
+      }
     }
   
   }
-  
+
+  if (lp_substr) {
+    printf ("Warning: Loop point set in substring\n");
+  }
+
   fclose (fOUT);
 
   printf ("Info: done!\n");
