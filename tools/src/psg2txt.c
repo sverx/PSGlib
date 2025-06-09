@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 			frameno += 1 + (op & 0x7);
 
 			if (!terse_output) {
-				printf("Wait %d frames\n", op & 0x7);
+				printf("End of frame, wait %d additional frames\n", op & 0x7);
 			}
 			continue;
 		}
