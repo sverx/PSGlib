@@ -34,8 +34,10 @@ unsigned int data_offset;
 gzFile fIN;
 FILE *fOUT;
 
-unsigned char volume[CHANNELS]={0x0F,0x0F,0x0F,0x0F};  // starting volume = silence
-unsigned short freq[CHANNELS]={0,0,0,0};
+// Start volume and frequencies to impossible values, to make
+// sure initial commands are not skipped.
+unsigned char volume[CHANNELS]={0xFF,0xFF,0xFF,0xFF};
+unsigned short freq[CHANNELS]={0xFFFF,0xFFFF,0xFFFF,0xFFFF};
 int volume_change[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
 int freq_change[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
 int hi_freq_change[CHANNELS]={FALSE,FALSE,FALSE,FALSE};
