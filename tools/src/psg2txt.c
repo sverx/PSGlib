@@ -193,7 +193,7 @@ int main(int argc, char **argv)
 	} else {
 		printf("Looppoint: 0x%04x (%d)\n", loopoffset, loopoffset);
 	}
-	if (loopoffset > 1) {
+	if (loopset_count > 1) {
 		printf("Warning: Loop point set more than once\n");
 	}
 	if (end_offset == -1) {
