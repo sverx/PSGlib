@@ -31,6 +31,8 @@ int main(int argc, char **argv)
 	int block_offset, block_length;
 	int opt;
 	int terse_output = 0;
+	int used_channels_mask = 0;
+	int i;
 
 	while ((opt = getopt(argc, argv, "ht")) != -1) {
 		switch (opt)
@@ -100,6 +102,8 @@ int main(int argc, char **argv)
 			chn = (op >> 5) & 3;
 			type = (op >> 4) & 1;
 			data = op & 0xf;
+
+			used_channels_mask |= 1<<chn;
 
 			if (terse_output) {
 				continue;
@@ -200,6 +204,13 @@ int main(int argc, char **argv)
 	if (end_offset+1 != psg->count) {
 		printf("Warning: Extra data after end of data marker.\n");
 	}
+	printf("PSG Channels used: ");
+	for (i=0; i<4; i++) {
+		if (used_channels_mask & (1<<i)) {
+			printf("[Channel %d] ", i);
+		}
+	}
+	printf("\n");
 
 	growbuf_free(psg);
 	return 0;
