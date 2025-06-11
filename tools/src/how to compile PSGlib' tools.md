@@ -13,8 +13,8 @@ for Windows (cross compile):
 i686-w64-mingw32-gcc -Wall -o vgm2psg.exe vgm2psg.c -lz
 i686-w64-mingw32-gcc -Wall -o psgcomp.exe psgcomp.c
 i686-w64-mingw32-gcc -Wall -o psgdecomp.exe psgdecomp.c
-i686-w64-mingw32-gcc -Wall -o psgcmp psgcmp.c
-i686-w64-mingw32-gcc -Wall -o psgcomp_ng psgcomp_ng.c growbuf.c psgcompress.c
-i686-w64-mingw32-gcc -Wall -o psg2txt psg2txt.c growbuf.c
+i686-w64-mingw32-gcc -Wall -o psgcmp.exe psgcmp.c
+i686-w64-mingw32-gcc -Wall -o psgcomp_ng.exe psgcomp_ng.c growbuf.c psgcompress.c
+i686-w64-mingw32-gcc -Wall -o psg2txt.exe psg2txt.c growbuf.c
 ```
 

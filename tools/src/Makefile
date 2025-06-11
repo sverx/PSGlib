@@ -2,7 +2,7 @@ LD=$(CC)
 CFLAGS=-Wall -O3
 LDLIBS=-lz
 
-all: psgcomp psgdecomp vgm2psg psgcomp_ng psg2txt
+all: psgcomp psgdecomp psgcmp vgm2psg psgcomp_ng psg2txt
 
 psgcomp_ng: psgcomp_ng.o psgcompress.o growbuf.o
 	$(LD) $(LDFLAGS) -o $@ $^
@@ -10,5 +10,5 @@ psgcomp_ng: psgcomp_ng.o psgcompress.o growbuf.o
 psg2txt: psg2txt.o growbuf.o
 	$(LD) $(LDFLAGS) -o $@ $^
 
-clean: psgcomp psgdecomp vgm2psg psgcomp_ng
+clean: psgcomp psgdecomp psgcmp vgm2psg psgcomp_ng psg2txt
 	rm -f $^ *.o
